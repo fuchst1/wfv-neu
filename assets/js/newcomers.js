@@ -55,6 +55,17 @@
 
     if (addButton && addForm && addModal && addFields) {
         addButton.addEventListener('click', () => openAddModal());
+        addFields.zip.addEventListener('blur', event => {
+            const value = event.target.value.trim();
+            if (!value) return;
+            fetch(`api.php?action=lookup_zip&plz=${encodeURIComponent(value)}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success && result.ort) {
+                        addFields.city.value = result.ort;
+                    }
+                });
+        });
         addForm.addEventListener('submit', event => {
             event.preventDefault();
             if (!Validation.validateInput(addFields.firstName) || !Validation.validateInput(addFields.lastName)) {
