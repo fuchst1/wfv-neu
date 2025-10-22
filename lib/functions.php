@@ -192,3 +192,22 @@ function format_currency(float $value): string
 {
     return number_format($value, 2, ',', '.');
 }
+
+function format_date(?string $value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+
+    $value = trim($value);
+    if ($value === '' || $value === '0000-00-00') {
+        return null;
+    }
+
+    $date = DateTime::createFromFormat('Y-m-d', $value);
+    if (!$date) {
+        return null;
+    }
+
+    return $date->format('d.m.Y');
+}
