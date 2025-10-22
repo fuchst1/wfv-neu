@@ -1,0 +1,104 @@
+<?php
+require_once __DIR__ . '/db.php';
+
+function available_years(): array
+{
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE 'lizenzen\\_%' ORDER BY table_name ASC");
+    $stmt->execute();
+    $years = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $table) {
+        $years[] = (int)substr($table, strlen('lizenzen_'));
+    }
+    sort($years);
+    return $years;
+}
+
+function latest_year(): ?int
+{
+    $years = available_years();
+    return $years ? max($years) : null;
+}
+
+function license_table(int $year): string
+{
+    return 'lizenzen_' . $year;
+}
+
+function boat_table(int $year): string
+{
+    return 'boote_' . $year;
+}
+
+function ensure_year_exists(int $year): bool
+{
+    $pdo = get_pdo();
+    $licenseTable = license_table($year);
+    $boatTable = boat_table($year);
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS {$licenseTable} (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        lizenznehmer_id INT NOT NULL,
+        lizenztyp ENUM('Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend') NOT NULL,
+        kosten DECIMAL(10,2) NOT NULL,
+        trinkgeld DECIMAL(10,2) DEFAULT 0.00,
+        gesamt DECIMAL(10,2) NOT NULL,
+        zahlungsdatum DATE,
+        notizen TEXT,
+        erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS {$boatTable} (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        lizenz_id INT,
+        bootnummer VARCHAR(50),
+        notizen TEXT,
+        FOREIGN KEY (lizenz_id) REFERENCES {$licenseTable}(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    return true;
+}
+
+function get_license_prices(int $year): array
+{
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('SELECT lizenztyp, preis FROM lizenzpreise WHERE jahr = :jahr');
+    $stmt->execute(['jahr' => $year]);
+    $prices = $stmt->fetchAll();
+    $map = [];
+    foreach ($prices as $row) {
+        $map[$row['lizenztyp']] = (float)$row['preis'];
+    }
+    return $map;
+}
+
+function get_all_licensees(): array
+{
+    $pdo = get_pdo();
+    $stmt = $pdo->query('SELECT * FROM lizenznehmer ORDER BY nachname, vorname');
+    return $stmt->fetchAll();
+}
+
+function get_licensees_for_year(int $year): array
+{
+    $pdo = get_pdo();
+    $licenseTable = license_table($year);
+    $boatTable = boat_table($year);
+
+    ensure_year_exists($year);
+
+    $sql = "SELECT l.id AS lizenz_id, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
+                ln.*, b.bootnummer, b.notizen AS boot_notizen
+            FROM {$licenseTable} l
+            JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
+            LEFT JOIN {$boatTable} b ON b.lizenz_id = l.id
+            ORDER BY ln.nachname, ln.vorname";
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll();
+}
+
+function format_currency(float $value): string
+{
+    return number_format($value, 2, ',', '.');
+}
