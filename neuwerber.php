@@ -69,7 +69,7 @@ $prices = get_license_prices($currentYear);
                             <small>Telefon: <?= htmlspecialchars($applicant['telefon'] ?? '-') ?> · E-Mail: <?= htmlspecialchars($applicant['email'] ?? '-') ?></small><br>
                             <small>Fischerkartennummer: <?= htmlspecialchars($applicant['fischerkartennummer'] ?? '-') ?></small>
                         </td>
-                        <td><?= $applicant['bewerbungsdatum'] ? htmlspecialchars($applicant['bewerbungsdatum']) : '–' ?></td>
+                        <td><?= ($formattedDate = format_date($applicant['bewerbungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
                         <td><?= nl2br(htmlspecialchars($applicant['notizen'] ?? '')) ?></td>
                         <td class="actions">
                             <button class="primary assign">Lizenz zuweisen</button>

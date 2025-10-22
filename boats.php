@@ -64,7 +64,7 @@ $prices = get_license_prices($currentYear);
                             <a class="button-link inline" href="index.php?jahr=<?= $boat['jahr'] ?>#license-<?= $boat['lizenz_id'] ?>">Zur Lizenz</a>
                         </td>
                         <td><?= htmlspecialchars((string)$boat['jahr']) ?></td>
-                        <td><?= $boat['zahlungsdatum'] ? htmlspecialchars($boat['zahlungsdatum']) : '–' ?></td>
+                        <td><?= ($formattedDate = format_date($boat['zahlungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
                         <td>
                             <?= nl2br(htmlspecialchars($boat['boot_notizen'] ?? '')) ?>
                             <?php if (!empty($boat['lizenz_notizen'])): ?>

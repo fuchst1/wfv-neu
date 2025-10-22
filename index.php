@@ -88,7 +88,7 @@ $yearOverview = get_year_overview($currentYear);
                             <td><?= format_currency((float)$row['kosten']) ?> €</td>
                             <td><?= format_currency((float)$row['trinkgeld']) ?> €</td>
                             <td><?= format_currency((float)$row['gesamt']) ?> €</td>
-                            <td><?= $row['zahlungsdatum'] ? htmlspecialchars($row['zahlungsdatum']) : '–' ?></td>
+                            <td><?= ($formattedDate = format_date($row['zahlungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
                             <td>
                                 <?= nl2br(htmlspecialchars($row['lizenz_notizen'] ?? '')) ?>
                                 <?php if ($row['lizenztyp'] === 'Boot' && ($row['bootnummer'] || $row['boot_notizen'])): ?>
