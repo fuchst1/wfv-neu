@@ -93,6 +93,15 @@ body {
     font-size: 0.85rem;
 }
 
+.button-link.primary {
+    background: var(--primary);
+    color: white;
+}
+
+.button-link.primary:hover {
+    background: var(--primary-dark);
+}
+
 main {
     padding: 2.5rem;
     max-width: 1360px;

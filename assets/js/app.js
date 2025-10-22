@@ -64,6 +64,16 @@
         row.querySelector('.extend').addEventListener('click', () => openExtendModal(data, row));
     });
 
+    if (typeof OPEN_LICENSE_MODAL !== 'undefined' && OPEN_LICENSE_MODAL) {
+        if (OPEN_LICENSE_MODAL === 'boat') {
+            openLicenseModal(null);
+            licenseFields.type.value = 'Boot';
+            licenseFields.type.dispatchEvent(new Event('change'));
+        } else if (OPEN_LICENSE_MODAL === 'license') {
+            openLicenseModal(null);
+        }
+    }
+
     licenseFields.tip.addEventListener('input', updateTotal);
     licenseFields.cost.addEventListener('input', updateTotal);
     extendFields.tip.addEventListener('input', updateExtendTotal);

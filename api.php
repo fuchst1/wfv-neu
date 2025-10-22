@@ -32,6 +32,9 @@ try {
         case 'assign_newcomer':
             assign_newcomer();
             break;
+        case 'create_newcomer':
+            create_newcomer();
+            break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unbekannte Aktion.']);
     }
@@ -354,4 +357,61 @@ function assign_newcomer(): void
         $pdo->rollBack();
         throw $e;
     }
+}
+
+function create_newcomer(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $firstName = trim((string)($data['vorname'] ?? ''));
+    $lastName = trim((string)($data['nachname'] ?? ''));
+    if ($firstName === '' || $lastName === '') {
+        echo json_encode(['success' => false, 'message' => 'Vor- und Nachname sind erforderlich.']);
+        return;
+    }
+
+    $street = trim((string)($data['strasse'] ?? '')) ?: null;
+    $zip = trim((string)($data['plz'] ?? '')) ?: null;
+    $city = trim((string)($data['ort'] ?? '')) ?: null;
+    $phone = trim((string)($data['telefon'] ?? '')) ?: null;
+    $email = trim((string)($data['email'] ?? '')) ?: null;
+    $card = trim((string)($data['fischerkartennummer'] ?? '')) ?: null;
+    $date = trim((string)($data['bewerbungsdatum'] ?? '')) ?: null;
+    $notes = trim((string)($data['notizen'] ?? '')) ?: null;
+
+    if ($date && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Bewerbungsdatum.']);
+        return;
+    }
+
+    if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige E-Mail-Adresse.']);
+        return;
+    }
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('INSERT INTO bewerber (vorname, nachname, strasse, plz, ort, telefon, email, fischerkartennummer, bewerbungsdatum, notizen) VALUES (:vorname, :nachname, :strasse, :plz, :ort, :telefon, :email, :karte, :datum, :notizen)');
+    $stmt->execute([
+        'vorname' => $firstName,
+        'nachname' => $lastName,
+        'strasse' => $street,
+        'plz' => $zip,
+        'ort' => $city,
+        'telefon' => $phone,
+        'email' => $email,
+        'karte' => $card,
+        'datum' => $date ?: date('Y-m-d'),
+        'notizen' => $notes,
+    ]);
+
+    $id = (int)$pdo->lastInsertId();
+    $stmt = $pdo->prepare('SELECT * FROM bewerber WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+    $applicant = $stmt->fetch();
+
+    echo json_encode(['success' => true, 'bewerber' => $applicant]);
 }
