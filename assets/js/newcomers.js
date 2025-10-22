@@ -5,6 +5,8 @@
     const addForm = document.getElementById('newApplicantForm');
     const addButton = document.getElementById('openAddApplicant');
     const countDisplay = document.getElementById('newcomerCount');
+    const table = document.getElementById('newcomerTable');
+    const tableBody = table ? table.tBodies[0] : null;
 
     if (!assignModal || !assignForm) {
         return;
@@ -105,7 +107,8 @@
         });
     }
 
-    document.querySelectorAll('tr[data-applicant]').forEach(row => {
+    const applicantRows = tableBody ? tableBody.querySelectorAll('tr[data-applicant]') : [];
+    applicantRows.forEach(row => {
         const applicant = JSON.parse(row.dataset.applicant);
         const assignBtn = row.querySelector('.assign');
         if (assignBtn) {
@@ -171,6 +174,7 @@
                         currentRow.remove();
                         adjustNewcomerCount(-1);
                         checkEmptyTable();
+                        refreshTableSearch();
                     }
                     hideModal(assignModal);
                 } else {
@@ -243,26 +247,34 @@
     }
 
     function checkEmptyTable() {
-        const tbody = document.querySelector('tbody');
-        if (!tbody) return;
-        if (tbody.querySelectorAll('tr').length === 0) {
+        if (!tableBody) return;
+        const hasEntries = Array.from(tableBody.rows).some(row => !row.hasAttribute('data-empty-row') && !row.hasAttribute('data-no-results'));
+        if (hasEntries) {
+            return;
+        }
+        let createdPlaceholder = false;
+        if (!tableBody.querySelector('[data-empty-row]')) {
             const row = document.createElement('tr');
+            row.setAttribute('data-empty-row', 'true');
             const cell = document.createElement('td');
             cell.colSpan = 5;
             cell.className = 'empty';
             cell.textContent = 'Keine Neuwerber vorhanden.';
             row.appendChild(cell);
-            tbody.appendChild(row);
+            tableBody.appendChild(row);
+            createdPlaceholder = true;
+        }
+        if (createdPlaceholder) {
+            refreshTableSearch();
         }
     }
 
     function addApplicantRow(applicant) {
-        const tbody = document.querySelector('tbody');
-        if (!tbody) return;
+        if (!tableBody) return;
 
-        const emptyCell = tbody.querySelector('td.empty');
-        if (emptyCell) {
-            emptyCell.parentElement.remove();
+        const placeholderRow = tableBody.querySelector('[data-empty-row]');
+        if (placeholderRow) {
+            placeholderRow.remove();
         }
 
         const row = document.createElement('tr');
@@ -300,13 +312,20 @@
         row.appendChild(notesCell);
         row.appendChild(actionCell);
 
-        tbody.insertBefore(row, tbody.firstChild);
+        tableBody.insertBefore(row, tableBody.firstChild);
+        refreshTableSearch();
     }
 
     function adjustNewcomerCount(delta) {
         if (!countDisplay) return;
         const current = parseInt(countDisplay.textContent, 10) || 0;
         countDisplay.textContent = String(Math.max(0, current + delta));
+    }
+
+    function refreshTableSearch() {
+        if (window.TableSearch && typeof window.TableSearch.refresh === 'function') {
+            window.TableSearch.refresh('#newcomerTable');
+        }
     }
 
     function clearValidation(form) {
