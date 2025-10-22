@@ -67,8 +67,30 @@ body {
     color: white;
 }
 
-.year-nav button {
+.year-nav button,
+.year-nav .button-link {
     margin-left: 0.5rem;
+}
+
+.button-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--secondary);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.button-link:hover {
+    background: #d6eadd;
+    transform: translateY(-1px);
+}
+
+.button-link.inline {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
 }
 
 main {
@@ -147,6 +169,11 @@ button.danger {
 
 button:hover {
     transform: translateY(-1px);
+}
+
+tr:target {
+    background: #f0f9f4;
+    outline: 2px solid var(--primary);
 }
 
 .actions button {
