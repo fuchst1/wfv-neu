@@ -39,7 +39,13 @@ $prices = get_license_prices($currentYear);
     </section>
 
     <section class="table-section">
-        <table>
+        <div class="table-filter">
+            <label class="table-search">
+                <span class="table-search-label">Suche:</span>
+                <input type="search" id="boatSearch" placeholder="Bootsnummer, Lizenznehmer oder Notizen …" data-table-search="#boatTable">
+            </label>
+        </div>
+        <table id="boatTable">
             <thead>
                 <tr>
                     <th>Bootsnummer</th>
@@ -51,7 +57,7 @@ $prices = get_license_prices($currentYear);
             </thead>
             <tbody>
             <?php if (!$boats): ?>
-                <tr>
+                <tr data-empty-row>
                     <td colspan="5" class="empty">Keine Boote erfasst.</td>
                 </tr>
             <?php else: ?>
@@ -153,6 +159,7 @@ $prices = get_license_prices($currentYear);
 
 <script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const BOOT_PRICE = <?= json_encode($prices['Boot'] ?? 0) ?>;</script>
 <script src="assets/js/validation.js"></script>
+<script src="assets/js/table-search.js"></script>
 <script src="assets/js/boats.js"></script>
 </body>
 </html>

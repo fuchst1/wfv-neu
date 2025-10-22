@@ -58,7 +58,13 @@ $yearOverview = get_year_overview($currentYear);
     </section>
 
     <section class="table-section">
-        <table>
+        <div class="table-filter">
+            <label class="table-search">
+                <span class="table-search-label">Suche:</span>
+                <input type="search" id="licenseSearch" placeholder="Lizenznehmer, Lizenztyp, Notizen …" data-table-search="#licenseTable">
+            </label>
+        </div>
+        <table id="licenseTable">
             <thead>
                 <tr>
                     <th>Lizenznehmer</th>
@@ -73,7 +79,7 @@ $yearOverview = get_year_overview($currentYear);
             </thead>
             <tbody>
                 <?php if (!$licensees): ?>
-                    <tr>
+                    <tr data-empty-row>
                         <td colspan="8" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
                     </tr>
                 <?php else: ?>
@@ -338,6 +344,7 @@ const LICENSE_PRICES = <?= json_encode($prices) ?>;
 const OPEN_LICENSE_MODAL = <?= json_encode($_GET['create'] ?? null) ?>;
 </script>
 <script src="assets/js/validation.js"></script>
+<script src="assets/js/table-search.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

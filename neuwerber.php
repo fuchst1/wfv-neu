@@ -42,7 +42,13 @@ $prices = get_license_prices($currentYear);
     </section>
 
     <section class="table-section">
-        <table>
+        <div class="table-filter">
+            <label class="table-search">
+                <span class="table-search-label">Suche:</span>
+                <input type="search" id="newcomerSearch" placeholder="Name, Ort oder Notizen durchsuchen …" data-table-search="#newcomerTable">
+            </label>
+        </div>
+        <table id="newcomerTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -54,7 +60,7 @@ $prices = get_license_prices($currentYear);
             </thead>
             <tbody>
             <?php if (!$newcomers): ?>
-                <tr>
+                <tr data-empty-row>
                     <td colspan="5" class="empty">Keine Neuwerber vorhanden.</td>
                 </tr>
             <?php else: ?>
@@ -180,6 +186,7 @@ $prices = get_license_prices($currentYear);
 
 <script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const LICENSE_PRICES = <?= json_encode($prices) ?>;</script>
 <script src="assets/js/validation.js"></script>
+<script src="assets/js/table-search.js"></script>
 <script src="assets/js/newcomers.js"></script>
 </body>
 </html>
