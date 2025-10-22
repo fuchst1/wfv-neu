@@ -220,6 +220,9 @@
         currentLicense = data || null;
         document.getElementById('licenseModalTitle').textContent = data ? 'Lizenz bearbeiten' : 'Neue Lizenz';
         resetLicenseForm();
+        if (!data) {
+            licenseFields.date.value = getTodayDateString();
+        }
         if (data) {
             fillLicenseForm(data);
         }
@@ -307,6 +310,12 @@
         } else {
             licenseFields.boatDetails.removeAttribute('open');
         }
+    }
+
+    function getTodayDateString() {
+        const today = new Date();
+        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+        return today.toISOString().split('T')[0];
     }
 
     function buildLicensePayload() {
