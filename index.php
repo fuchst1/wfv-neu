@@ -40,6 +40,7 @@ $prices = get_license_prices($currentYear);
             <?php endforeach; ?>
         </ul>
         <button class="primary" id="openCreateYear">Neues Jahr anlegen</button>
+        <a class="button-link" href="neuwerber.php">Neuwerber</a>
         <a class="button-link" href="boats.php">Bootsübersicht</a>
     </nav>
 </header>
