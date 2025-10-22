@@ -98,6 +98,44 @@ function get_licensees_for_year(int $year): array
     return $stmt->fetchAll();
 }
 
+function get_boats_overview(): array
+{
+    $pdo = get_pdo();
+    $boats = [];
+
+    foreach (available_years() as $year) {
+        ensure_year_exists($year);
+        $licenseTable = license_table($year);
+        $boatTable = boat_table($year);
+
+        $sql = "SELECT :jahr AS jahr, b.id AS boot_id, b.bootnummer, b.notizen AS boot_notizen, l.id AS lizenz_id, l.notizen AS lizenz_notizen, l.zahlungsdatum, ln.id AS lizenznehmer_id, ln.vorname, ln.nachname, ln.telefon, ln.email
+                FROM {$boatTable} b
+                JOIN {$licenseTable} l ON l.id = b.lizenz_id
+                JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
+                ORDER BY b.bootnummer, ln.nachname, ln.vorname";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['jahr' => $year]);
+        $rows = $stmt->fetchAll();
+
+        foreach ($rows as $row) {
+            $row['jahr'] = (int)$row['jahr'];
+            $boats[] = $row;
+        }
+    }
+
+    usort($boats, function (array $a, array $b): int {
+        $numberCompare = strnatcmp((string)($a['bootnummer'] ?? ''), (string)($b['bootnummer'] ?? ''));
+        if ($numberCompare !== 0) {
+            return $numberCompare;
+        }
+
+        return ($b['jahr'] <=> $a['jahr']);
+    });
+
+    return $boats;
+}
+
 function format_currency(float $value): string
 {
     return number_format($value, 2, ',', '.');

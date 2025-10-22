@@ -40,6 +40,7 @@ $prices = get_license_prices($currentYear);
             <?php endforeach; ?>
         </ul>
         <button class="primary" id="openCreateYear">Neues Jahr anlegen</button>
+        <a class="button-link" href="boats.php">Bootsübersicht</a>
     </nav>
 </header>
 
@@ -75,7 +76,7 @@ $prices = get_license_prices($currentYear);
                     </tr>
                 <?php else: ?>
                     <?php foreach ($licensees as $row): ?>
-                        <tr data-license='<?= json_encode($row, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
+                        <tr id="license-<?= $row['lizenz_id'] ?>" data-license='<?= json_encode($row, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
                             <td>
                                 <strong><?= htmlspecialchars($row['nachname']) ?>, <?= htmlspecialchars($row['vorname']) ?></strong><br>
                                 <small><?= htmlspecialchars($row['strasse'] ?? '') ?>, <?= htmlspecialchars($row['plz'] ?? '') ?> <?= htmlspecialchars($row['ort'] ?? '') ?></small><br>
