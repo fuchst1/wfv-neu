@@ -80,6 +80,13 @@ function get_all_licensees(): array
     return $stmt->fetchAll();
 }
 
+function get_newcomers(): array
+{
+    $pdo = get_pdo();
+    $stmt = $pdo->query('SELECT * FROM bewerber ORDER BY bewerbungsdatum DESC, nachname, vorname');
+    return $stmt->fetchAll();
+}
+
 function get_licensees_for_year(int $year): array
 {
     $pdo = get_pdo();

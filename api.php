@@ -29,6 +29,9 @@ try {
         case 'get_prices':
             get_prices();
             break;
+        case 'assign_newcomer':
+            assign_newcomer();
+            break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unbekannte Aktion.']);
     }
@@ -284,4 +287,71 @@ function get_prices(): void
     }
     $prices = get_license_prices($year);
     echo json_encode(['success' => true, 'preise' => $prices]);
+}
+
+function assign_newcomer(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $applicantId = (int)($data['applicant_id'] ?? 0);
+    $year = (int)($data['year'] ?? 0);
+    $type = $data['license_type'] ?? '';
+    $cost = isset($data['kosten']) ? (float)$data['kosten'] : null;
+    $tip = isset($data['trinkgeld']) ? (float)$data['trinkgeld'] : null;
+    $date = $data['zahlungsdatum'] ?? null;
+    $notes = $data['notizen'] ?? null;
+
+    $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
+    if ($applicantId <= 0 || $year < 2000 || !in_array($type, $allowedTypes, true) || $cost === null || $tip === null) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('SELECT * FROM bewerber WHERE id = :id');
+    $stmt->execute(['id' => $applicantId]);
+    $applicant = $stmt->fetch();
+    if (!$applicant) {
+        echo json_encode(['success' => false, 'message' => 'Neuwerber nicht gefunden.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    $licenseTable = license_table($year);
+
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('INSERT INTO lizenznehmer (vorname, nachname, strasse, plz, ort, telefon, email, fischerkartennummer) VALUES (:vorname, :nachname, :strasse, :plz, :ort, :telefon, :email, :karte)');
+        $stmt->execute([
+            'vorname' => $applicant['vorname'] ?? '',
+            'nachname' => $applicant['nachname'] ?? '',
+            'strasse' => $applicant['strasse'] ?? null,
+            'plz' => $applicant['plz'] ?? null,
+            'ort' => $applicant['ort'] ?? null,
+            'telefon' => $applicant['telefon'] ?? null,
+            'email' => $applicant['email'] ?? null,
+            'karte' => $applicant['fischerkartennummer'] ?? null,
+        ]);
+        $licenseeId = (int)$pdo->lastInsertId();
+
+        $total = (float)$cost + (float)$tip;
+        $stmt = $pdo->prepare("INSERT INTO {$licenseTable} (lizenznehmer_id, lizenztyp, kosten, trinkgeld, gesamt, zahlungsdatum, notizen) VALUES (:licensee_id, :typ, :kosten, :trinkgeld, :gesamt, :datum, :notizen)");
+        $stmt->execute([
+            'licensee_id' => $licenseeId,
+            'typ' => $type,
+            'kosten' => $cost,
+            'trinkgeld' => $tip,
+            'gesamt' => $total,
+            'datum' => $date ?: null,
+            'notizen' => $notes ?: null,
+        ]);
+
+        $stmt = $pdo->prepare('DELETE FROM bewerber WHERE id = :id');
+        $stmt->execute(['id' => $applicantId]);
+
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
