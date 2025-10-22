@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/functions.php';
 
 $boats = get_boats_overview();
+$latestYear = latest_year();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -27,6 +28,9 @@ $boats = get_boats_overview();
         <div>
             <h2>Alle Boote</h2>
             <p>Erfasste Boote gesamt: <strong><?= count($boats) ?></strong></p>
+        </div>
+        <div>
+            <a class="button-link primary" href="index.php<?= $latestYear ? '?jahr=' . $latestYear . '&create=boat' : '?create=boat' ?>">Boot hinzufügen</a>
         </div>
     </section>
 

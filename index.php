@@ -292,7 +292,11 @@ $prices = get_license_prices($currentYear);
     </div>
 </div>
 
-<script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const LICENSE_PRICES = <?= json_encode($prices) ?>;</script>
+<script>
+const CURRENT_YEAR = <?= json_encode($currentYear) ?>;
+const LICENSE_PRICES = <?= json_encode($prices) ?>;
+const OPEN_LICENSE_MODAL = <?= json_encode($_GET['create'] ?? null) ?>;
+</script>
 <script src="assets/js/validation.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

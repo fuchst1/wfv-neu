@@ -47,7 +47,10 @@ $prices = get_license_prices($currentYear);
     <section class="dashboard">
         <div>
             <h2>Neuwerber insgesamt</h2>
-            <p>Anzahl: <strong><?= count($newcomers) ?></strong></p>
+            <p>Anzahl: <strong id="newcomerCount"><?= count($newcomers) ?></strong></p>
+        </div>
+        <div>
+            <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
         </div>
     </section>
 
@@ -91,6 +94,55 @@ $prices = get_license_prices($currentYear);
         </table>
     </section>
 </main>
+
+<div class="modal" id="newApplicantModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Neuwerber hinzufügen</h2>
+            <button class="close" data-close>&times;</button>
+        </header>
+        <form id="newApplicantForm">
+            <section class="form-section">
+                <div class="form-grid">
+                    <label>Vorname
+                        <input type="text" id="applicantFirstName" data-validate="required" required>
+                    </label>
+                    <label>Nachname
+                        <input type="text" id="applicantLastName" data-validate="required" required>
+                    </label>
+                    <label>Straße
+                        <input type="text" id="applicantStreet">
+                    </label>
+                    <label>PLZ
+                        <input type="text" id="applicantZip" data-validate="zip">
+                    </label>
+                    <label>Ort
+                        <input type="text" id="applicantCity">
+                    </label>
+                    <label>Telefon
+                        <input type="text" id="applicantPhone">
+                    </label>
+                    <label>E-Mail
+                        <input type="email" id="applicantEmail" data-validate="email">
+                    </label>
+                    <label>Fischerkartennummer
+                        <input type="text" id="applicantCard">
+                    </label>
+                </div>
+                <label>Bewerbungsdatum
+                    <input type="date" id="applicantDate">
+                </label>
+                <label>Notizen
+                    <textarea id="applicantNotes" rows="3"></textarea>
+                </label>
+            </section>
+            <footer class="modal-footer">
+                <button type="button" class="secondary" data-close>Abbrechen</button>
+                <button type="submit" class="primary">Speichern</button>
+            </footer>
+        </form>
+    </div>
+</div>
 
 <div class="modal" id="assignModal" hidden>
     <div class="modal-content">
