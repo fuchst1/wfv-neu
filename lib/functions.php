@@ -117,8 +117,8 @@ function get_boats_overview(): array
 
         $sql = "SELECT :jahr AS jahr, b.id AS boot_id, b.bootnummer, b.notizen AS boot_notizen, l.id AS lizenz_id, l.notizen AS lizenz_notizen, l.zahlungsdatum, ln.id AS lizenznehmer_id, ln.vorname, ln.nachname, ln.telefon, ln.email
                 FROM {$boatTable} b
-                JOIN {$licenseTable} l ON l.id = b.lizenz_id
-                JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
+                LEFT JOIN {$licenseTable} l ON l.id = b.lizenz_id
+                LEFT JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
                 ORDER BY b.bootnummer, ln.nachname, ln.vorname";
 
         $stmt = $pdo->prepare($sql);
