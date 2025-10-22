@@ -50,16 +50,31 @@ ensure_year_exists($currentYear);
                     <th>Bootsnummer</th>
                     <th>Lizenznehmer</th>
                     <th>Bootsnotizen</th>
+                    <th>Aktionen</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (!$boats): ?>
                 <tr data-empty-row>
-                    <td colspan="3" class="empty">Keine Boote erfasst.</td>
+                    <td colspan="4" class="empty">Keine Boote erfasst.</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($boats as $boat): ?>
-                    <tr>
+                    <?php
+                        $boatData = [
+                            'id' => $boat['boot_id'] !== null ? (int)$boat['boot_id'] : null,
+                            'jahr' => (int)$boat['jahr'],
+                            'bootnummer' => $boat['bootnummer'],
+                            'notizen' => $boat['boot_notizen'],
+                            'lizenz_id' => $boat['lizenz_id'] !== null ? (int)$boat['lizenz_id'] : null,
+                            'lizenznehmer' => [
+                                'id' => $boat['lizenznehmer_id'] !== null ? (int)$boat['lizenznehmer_id'] : null,
+                                'vorname' => $boat['vorname'] ?? null,
+                                'nachname' => $boat['nachname'] ?? null,
+                            ],
+                        ];
+                    ?>
+                    <tr data-boat='<?= json_encode($boatData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
                         <td><?= htmlspecialchars($boat['bootnummer'] ?? '–') ?></td>
                         <td>
                             <?php if (!empty($boat['nachname']) || !empty($boat['vorname'])): ?>
@@ -81,6 +96,11 @@ ensure_year_exists($currentYear);
                                 </details>
                             <?php endif; ?>
                         </td>
+                        <td class="actions">
+                            <button type="button" class="secondary edit">Bearbeiten</button>
+                            <button type="button" class="secondary assign">Lizenznehmer zuweisen</button>
+                            <button type="button" class="danger delete">Löschen</button>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -91,10 +111,12 @@ ensure_year_exists($currentYear);
 <div class="modal" id="addBoatModal" hidden>
     <div class="modal-content">
         <header>
-            <h2>Boot hinzufügen</h2>
+            <h2 id="boatModalTitle">Boot hinzufügen</h2>
             <button class="close" data-close>&times;</button>
         </header>
         <form id="addBoatForm">
+            <input type="hidden" id="boatId">
+            <input type="hidden" id="boatYear">
             <section class="form-section">
                 <label>Bootsnummer
                     <input type="text" id="boatNumber" data-validate="required" required>
@@ -102,6 +124,31 @@ ensure_year_exists($currentYear);
                 <label>Bootsnotizen
                     <textarea id="boatNotes" rows="3"></textarea>
                 </label>
+            </section>
+            <footer class="modal-footer">
+                <button type="button" class="secondary" data-close>Abbrechen</button>
+                <button type="submit" class="primary">Speichern</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="assignLicenseModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Lizenznehmer zuweisen</h2>
+            <button class="close" data-close>&times;</button>
+        </header>
+        <form id="assignLicenseForm">
+            <input type="hidden" id="assignBoatId">
+            <input type="hidden" id="assignBoatYear">
+            <section class="form-section">
+                <p id="assignBoatInfo"></p>
+                <label for="assignLicenseSelect">Lizenz wählen</label>
+                <select id="assignLicenseSelect">
+                    <option value="">Kein Lizenznehmer</option>
+                </select>
+                <p class="form-hint" id="assignLicenseHint"></p>
             </section>
             <footer class="modal-footer">
                 <button type="button" class="secondary" data-close>Abbrechen</button>

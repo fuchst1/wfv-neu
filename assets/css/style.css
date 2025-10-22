@@ -370,6 +370,12 @@ details {
     font-size: 0.8rem;
 }
 
+.form-hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0;
+}
+
 @media (max-width: 768px) {
     .app-header {
         gap: 1rem;

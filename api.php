@@ -20,6 +20,18 @@ try {
         case 'save_boat':
             save_boat();
             break;
+        case 'update_boat':
+            update_boat();
+            break;
+        case 'delete_boat':
+            delete_boat();
+            break;
+        case 'get_boat_licenses':
+            get_boat_licenses();
+            break;
+        case 'assign_boat_license':
+            assign_boat_license();
+            break;
         case 'delete_license':
             delete_license();
             break;
@@ -211,6 +223,156 @@ function save_boat(): void
     ]);
 
     echo json_encode(['success' => true]);
+}
+
+function update_boat(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $year = (int)($data['year'] ?? 0);
+    $boatPayload = $data['boat'] ?? [];
+    $boatId = (int)($boatPayload['id'] ?? 0);
+    $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNotes = $boatPayload['notizen'] ?? null;
+
+    if ($year < 2000 || $boatId <= 0 || $boatNumber === '') {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    $boatTable = boat_table($year);
+    $pdo = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
+    $stmt->execute(['id' => $boatId]);
+    if (!$stmt->fetchColumn()) {
+        echo json_encode(['success' => false, 'message' => 'Boot wurde nicht gefunden.']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("UPDATE {$boatTable} SET bootnummer = :nummer, notizen = :notizen WHERE id = :id");
+    $stmt->execute([
+        'nummer' => $boatNumber,
+        'notizen' => $boatNotes !== null ? $boatNotes : null,
+        'id' => $boatId,
+    ]);
+
+    echo json_encode(['success' => true]);
+}
+
+function delete_boat(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $year = (int)($data['year'] ?? 0);
+    $boatId = (int)($data['boat_id'] ?? 0);
+    if ($year < 2000 || $boatId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    $boatTable = boat_table($year);
+    $pdo = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
+    $stmt->execute(['id' => $boatId]);
+    if (!$stmt->fetchColumn()) {
+        echo json_encode(['success' => false, 'message' => 'Boot wurde nicht gefunden.']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM {$boatTable} WHERE id = :id");
+    $stmt->execute(['id' => $boatId]);
+
+    echo json_encode(['success' => true]);
+}
+
+function get_boat_licenses(): void
+{
+    $year = (int)($_GET['year'] ?? 0);
+    if ($year < 2000) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    $licenseTable = license_table($year);
+    $boatTable = boat_table($year);
+
+    $pdo = get_pdo();
+    $sql = "SELECT l.id, l.notizen, l.zahlungsdatum, ln.vorname, ln.nachname, b.id AS boat_id, b.bootnummer\n            FROM {$licenseTable} l\n            JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id\n            LEFT JOIN {$boatTable} b ON b.lizenz_id = l.id\n            WHERE l.lizenztyp = 'Boot'\n            ORDER BY ln.nachname, ln.vorname, l.id";
+
+    $stmt = $pdo->query($sql);
+    $licenses = $stmt->fetchAll();
+
+    echo json_encode(['success' => true, 'licenses' => $licenses]);
+}
+
+function assign_boat_license(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $year = (int)($data['year'] ?? 0);
+    $boatId = (int)($data['boat_id'] ?? 0);
+    $licenseId = isset($data['license_id']) && $data['license_id'] !== null ? (int)$data['license_id'] : null;
+
+    if ($year < 2000 || $boatId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    $licenseTable = license_table($year);
+    $boatTable = boat_table($year);
+    $pdo = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
+    $stmt->execute(['id' => $boatId]);
+    if (!$stmt->fetchColumn()) {
+        echo json_encode(['success' => false, 'message' => 'Boot wurde nicht gefunden.']);
+        return;
+    }
+
+    if ($licenseId !== null) {
+        $stmt = $pdo->prepare("SELECT lizenztyp FROM {$licenseTable} WHERE id = :id");
+        $stmt->execute(['id' => $licenseId]);
+        $type = $stmt->fetchColumn();
+        if ($type === false) {
+            echo json_encode(['success' => false, 'message' => 'Lizenz wurde nicht gefunden.']);
+            return;
+        }
+        if ($type !== 'Boot') {
+            echo json_encode(['success' => false, 'message' => 'Die ausgewählte Lizenz ist keine Bootslizenz.']);
+            return;
+        }
+    }
+
+    $pdo->beginTransaction();
+    try {
+        if ($licenseId !== null) {
+            $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenz_id = NULL WHERE lizenz_id = :license_id AND id <> :boat_id");
+            $stmt->execute([
+                'license_id' => $licenseId,
+                'boat_id' => $boatId,
+            ]);
+        }
+
+        $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenz_id = :license_id WHERE id = :boat_id");
+        $stmt->execute([
+            'license_id' => $licenseId,
+            'boat_id' => $boatId,
+        ]);
+
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
 
 function delete_license(): void
