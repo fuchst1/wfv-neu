@@ -116,6 +116,70 @@ main {
     gap: 1rem;
 }
 
+.dashboard-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+}
+
+.dashboard-stats .stat {
+    background: var(--secondary);
+    border-radius: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    min-width: 150px;
+    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.05);
+}
+
+.dashboard-stats .stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-stats .stat-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.summary-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin: 2rem auto 0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.summary-section h3 {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.summary-table tbody tr:last-child td,
+.summary-table tfoot tr td,
+.summary-table tfoot tr th {
+    border-bottom: none;
+}
+
+.summary-table tfoot {
+    background: var(--secondary);
+    font-weight: 600;
+}
+
 .table-section {
     background: white;
     border-radius: 1rem;

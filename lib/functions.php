@@ -143,6 +143,51 @@ function get_boats_overview(): array
     return $boats;
 }
 
+function get_year_overview(int $year): array
+{
+    $pdo = get_pdo();
+    ensure_year_exists($year);
+    $licenseTable = license_table($year);
+
+    $sql = "SELECT lizenztyp, COUNT(*) AS anzahl, COALESCE(SUM(kosten), 0) AS summe_kosten, COALESCE(SUM(trinkgeld), 0) AS summe_trinkgeld, COALESCE(SUM(gesamt), 0) AS summe_gesamt
+            FROM {$licenseTable}
+            GROUP BY lizenztyp
+            ORDER BY lizenztyp";
+
+    $stmt = $pdo->query($sql);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $overview = [
+        'types' => [],
+        'total_count' => 0,
+        'total_cost' => 0.0,
+        'total_tip' => 0.0,
+        'total_combined' => 0.0,
+    ];
+
+    foreach ($rows as $row) {
+        $count = (int)($row['anzahl'] ?? 0);
+        $cost = (float)($row['summe_kosten'] ?? 0.0);
+        $tip = (float)($row['summe_trinkgeld'] ?? 0.0);
+        $combined = (float)($row['summe_gesamt'] ?? 0.0);
+
+        $overview['types'][] = [
+            'lizenztyp' => $row['lizenztyp'],
+            'count' => $count,
+            'sum_cost' => $cost,
+            'sum_tip' => $tip,
+            'sum_total' => $combined,
+        ];
+
+        $overview['total_count'] += $count;
+        $overview['total_cost'] += $cost;
+        $overview['total_tip'] += $tip;
+        $overview['total_combined'] += $combined;
+    }
+
+    return $overview;
+}
+
 function format_currency(float $value): string
 {
     return number_format($value, 2, ',', '.');
