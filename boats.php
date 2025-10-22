@@ -3,6 +3,9 @@ require_once __DIR__ . '/lib/functions.php';
 
 $boats = get_boats_overview();
 $latestYear = latest_year();
+$currentYear = $latestYear ?: (int)date('Y');
+ensure_year_exists($currentYear);
+$prices = get_license_prices($currentYear);
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -19,7 +22,8 @@ $latestYear = latest_year();
         <p>Wörderner Fischereiverein</p>
     </div>
     <nav class="year-nav">
-        <a class="button-link" href="index.php">Zurück zur Lizenzverwaltung</a>
+        <a class="button-link" href="index.php">Zur Lizenzverwaltung</a>
+        <a class="button-link" href="neuwerber.php">Neuwerber</a>
     </nav>
 </header>
 
@@ -30,7 +34,7 @@ $latestYear = latest_year();
             <p>Erfasste Boote gesamt: <strong><?= count($boats) ?></strong></p>
         </div>
         <div>
-            <a class="button-link primary" href="index.php<?= $latestYear ? '?jahr=' . $latestYear . '&create=boat' : '?create=boat' ?>">Boot hinzufügen</a>
+            <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
         </div>
     </section>
 
@@ -77,5 +81,78 @@ $latestYear = latest_year();
         </table>
     </section>
 </main>
+<div class="modal" id="addBoatModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Bootslizenz hinzufügen</h2>
+            <button class="close" data-close>&times;</button>
+        </header>
+        <form id="addBoatForm">
+            <section class="form-section">
+                <div class="form-grid">
+                    <label>Jahr
+                        <input type="number" id="boatYear" min="2000" data-validate="required" required>
+                    </label>
+                    <label>Bootsnummer
+                        <input type="text" id="boatNumber">
+                    </label>
+                    <label>Kosten (€)
+                        <input type="number" id="boatCost" step="0.01" min="0" data-validate="required" required>
+                    </label>
+                    <label>Trinkgeld (€)
+                        <input type="number" id="boatTip" step="0.01" min="0" value="0">
+                    </label>
+                    <label>Gesamt (€)
+                        <input type="text" id="boatTotal" readonly>
+                    </label>
+                    <label>Zahlungsdatum
+                        <input type="date" id="boatDate">
+                    </label>
+                </div>
+                <h3>Lizenznehmer</h3>
+                <div class="form-grid">
+                    <label>Vorname
+                        <input type="text" id="boatFirstName" data-validate="required" required>
+                    </label>
+                    <label>Nachname
+                        <input type="text" id="boatLastName" data-validate="required" required>
+                    </label>
+                    <label>Straße
+                        <input type="text" id="boatStreet">
+                    </label>
+                    <label>PLZ
+                        <input type="text" id="boatZip" data-validate="zip">
+                    </label>
+                    <label>Ort
+                        <input type="text" id="boatCity">
+                    </label>
+                    <label>Telefon
+                        <input type="text" id="boatPhone">
+                    </label>
+                    <label>E-Mail
+                        <input type="email" id="boatEmail" data-validate="email">
+                    </label>
+                    <label>Fischerkartennummer
+                        <input type="text" id="boatCard">
+                    </label>
+                </div>
+                <label>Lizenznotizen
+                    <textarea id="boatLicenseNotes" rows="3"></textarea>
+                </label>
+                <label>Bootsnotizen
+                    <textarea id="boatNotes" rows="3"></textarea>
+                </label>
+            </section>
+            <footer class="modal-footer">
+                <button type="button" class="secondary" data-close>Abbrechen</button>
+                <button type="submit" class="primary">Speichern</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const BOOT_PRICE = <?= json_encode($prices['Boot'] ?? 0) ?>;</script>
+<script src="assets/js/validation.js"></script>
+<script src="assets/js/boats.js"></script>
 </body>
 </html>

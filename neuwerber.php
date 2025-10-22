@@ -1,16 +1,11 @@
 <?php
 require_once __DIR__ . '/lib/functions.php';
 
-$years = available_years();
-$currentYear = isset($_GET['jahr']) ? (int)$_GET['jahr'] : null;
-if (!$currentYear && $years) {
-    $currentYear = max($years);
-}
+$currentYear = latest_year();
 if (!$currentYear) {
     $currentYear = (int)date('Y');
-    ensure_year_exists($currentYear);
-    $years = available_years();
 }
+ensure_year_exists($currentYear);
 
 $newcomers = get_newcomers();
 $prices = get_license_prices($currentYear);
@@ -30,14 +25,6 @@ $prices = get_license_prices($currentYear);
         <p>Wörderner Fischereiverein</p>
     </div>
     <nav class="year-nav">
-        <span>Jahr für Preisvorschläge:</span>
-        <ul>
-            <?php foreach ($years as $year): ?>
-                <li class="<?= $year === $currentYear ? 'active' : '' ?>">
-                    <a href="?jahr=<?= $year ?>"><?= $year ?></a>
-                </li>
-            <?php endforeach; ?>
-        </ul>
         <a class="button-link" href="index.php">Zur Lizenzverwaltung</a>
         <a class="button-link" href="boats.php">Bootsübersicht</a>
     </nav>
