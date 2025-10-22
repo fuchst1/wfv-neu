@@ -17,6 +17,9 @@ try {
         case 'save_license':
             save_license();
             break;
+        case 'save_boat':
+            save_boat();
+            break;
         case 'delete_license':
             delete_license();
             break;
@@ -171,6 +174,43 @@ function save_license(): void
         $pdo->rollBack();
         throw $e;
     }
+}
+
+function save_boat(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $year = (int)($data['year'] ?? 0);
+    if ($year < 2000) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    $boatPayload = $data['boat'] ?? [];
+    $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNotes = $boatPayload['notizen'] ?? null;
+
+    if ($boatNumber === '') {
+        echo json_encode(['success' => false, 'message' => 'Bootsnummer ist erforderlich.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+
+    $boatTable = boat_table($year);
+    $pdo = get_pdo();
+
+    $stmt = $pdo->prepare("INSERT INTO {$boatTable} (lizenz_id, bootnummer, notizen) VALUES (NULL, :nummer, :notizen)");
+    $stmt->execute([
+        'nummer' => $boatNumber,
+        'notizen' => $boatNotes !== null ? $boatNotes : null,
+    ]);
+
+    echo json_encode(['success' => true]);
 }
 
 function delete_license(): void
