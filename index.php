@@ -51,63 +51,10 @@ $yearOverview = get_year_overview($currentYear);
         <div>
             <h2>Überblick <?= $currentYear ?></h2>
             <p>Lizenznehmer gesamt: <strong><?= count($licensees) ?></strong></p>
-            <div class="dashboard-stats">
-                <div class="stat">
-                    <span class="stat-label">Einnahmen</span>
-                    <span class="stat-value"><?= format_currency($yearOverview['total_cost']) ?> €</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Trinkgeld</span>
-                    <span class="stat-value"><?= format_currency($yearOverview['total_tip']) ?> €</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Summe</span>
-                    <span class="stat-value"><?= format_currency($yearOverview['total_combined']) ?> €</span>
-                </div>
-            </div>
         </div>
         <div>
             <button class="primary" id="openAddLicense">Lizenz hinzufügen</button>
         </div>
-    </section>
-
-    <section class="summary-section">
-        <h3>Verkäufe nach Lizenztyp</h3>
-        <?php if (!$yearOverview['types']): ?>
-            <p class="empty">Noch keine Lizenzen für dieses Jahr verkauft.</p>
-        <?php else: ?>
-            <table class="summary-table">
-                <thead>
-                    <tr>
-                        <th>Lizenztyp</th>
-                        <th>Anzahl</th>
-                        <th>Summe Kosten</th>
-                        <th>Summe Trinkgeld</th>
-                        <th>Summe Gesamt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($yearOverview['types'] as $summary): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($summary['lizenztyp']) ?></td>
-                            <td><?= $summary['count'] ?></td>
-                            <td><?= format_currency($summary['sum_cost']) ?> €</td>
-                            <td><?= format_currency($summary['sum_tip']) ?> €</td>
-                            <td><?= format_currency($summary['sum_total']) ?> €</td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th>Gesamt</th>
-                        <th><?= $yearOverview['total_count'] ?></th>
-                        <th><?= format_currency($yearOverview['total_cost']) ?> €</th>
-                        <th><?= format_currency($yearOverview['total_tip']) ?> €</th>
-                        <th><?= format_currency($yearOverview['total_combined']) ?> €</th>
-                    </tr>
-                </tfoot>
-            </table>
-        <?php endif; ?>
     </section>
 
     <section class="table-section">
@@ -162,6 +109,45 @@ $yearOverview = get_year_overview($currentYear);
                 <?php endif; ?>
             </tbody>
         </table>
+    </section>
+
+    <section class="summary-section">
+        <h3>Verkäufe nach Lizenztyp</h3>
+        <?php if (!$yearOverview['types']): ?>
+            <p class="empty">Noch keine Lizenzen für dieses Jahr verkauft.</p>
+        <?php else: ?>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Lizenztyp</th>
+                        <th>Anzahl</th>
+                        <th>Summe Kosten</th>
+                        <th>Summe Trinkgeld</th>
+                        <th>Summe Gesamt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($yearOverview['types'] as $summary): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($summary['lizenztyp']) ?></td>
+                            <td><?= $summary['count'] ?></td>
+                            <td><?= format_currency($summary['sum_cost']) ?> €</td>
+                            <td><?= format_currency($summary['sum_tip']) ?> €</td>
+                            <td><?= format_currency($summary['sum_total']) ?> €</td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Gesamt</th>
+                        <th><?= $yearOverview['total_count'] ?></th>
+                        <th><?= format_currency($yearOverview['total_cost']) ?> €</th>
+                        <th><?= format_currency($yearOverview['total_tip']) ?> €</th>
+                        <th><?= format_currency($yearOverview['total_combined']) ?> €</th>
+                    </tr>
+                </tfoot>
+            </table>
+        <?php endif; ?>
     </section>
 </main>
 

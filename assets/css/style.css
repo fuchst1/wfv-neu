@@ -116,39 +116,11 @@ main {
     gap: 1rem;
 }
 
-.dashboard-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-top: 0.75rem;
-}
-
-.dashboard-stats .stat {
-    background: var(--secondary);
-    border-radius: 0.75rem;
-    padding: 0.85rem 1.25rem;
-    min-width: 150px;
-    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.05);
-}
-
-.dashboard-stats .stat-label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--muted);
-    margin-bottom: 0.2rem;
-}
-
-.dashboard-stats .stat-value {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--primary-dark);
-}
-
 .summary-section {
     background: white;
     border-radius: 1rem;
     padding: 2rem;
-    margin: 2rem auto 0;
+    margin: 2rem auto 2.5rem;
     box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
