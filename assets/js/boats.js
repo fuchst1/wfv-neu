@@ -26,7 +26,9 @@
 
     let licenseCache = null;
 
-    Validation.attach(form);
+    if (typeof Validation !== 'undefined' && typeof Validation.attach === 'function') {
+        Validation.attach(form);
+    }
 
     openButton.addEventListener('click', () => {
         openCreateModal();
