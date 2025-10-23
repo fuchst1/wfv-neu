@@ -117,7 +117,8 @@ function save_license(): void
     $licenseePayload['vorname'] = $vorname;
     $licenseePayload['nachname'] = $nachname;
 
-    $blockedEntry = find_blocklist_entry($vorname, $nachname);
+    $licenseNumberRaw = isset($licenseePayload['fischerkartennummer']) ? trim((string)$licenseePayload['fischerkartennummer']) : '';
+    $blockedEntry = find_blocklist_entry($vorname, $nachname, $licenseNumberRaw !== '' ? $licenseNumberRaw : null);
     if ($blockedEntry && !$force) {
         echo json_encode([
             'success' => false,
