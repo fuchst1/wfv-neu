@@ -106,39 +106,41 @@ function find_blocklist_entry(string $vorname, string $nachname, ?string $lizenz
     ensure_blocklist_table_exists();
     $table = blocklist_table();
 
-    $conditions = [];
-    $params = [];
-
     $vorname = trim($vorname);
     $nachname = trim($nachname);
     $lizenznummer = $lizenznummer !== null ? trim($lizenznummer) : null;
 
+    if ($lizenznummer !== null && $lizenznummer !== '') {
+        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE LOWER(TRIM(lizenznummer)) = LOWER(TRIM(:lizenznummer)) ORDER BY id ASC LIMIT 1");
+        $stmt->execute(['lizenznummer' => $lizenznummer]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row !== false) {
+            return $row;
+        }
+    }
+
     if ($vorname !== '' && $nachname !== '') {
-        $conditions[] = '(LOWER(TRIM(vorname)) = LOWER(TRIM(:vorname_full)) AND LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname_full)))';
-        $params['vorname_full'] = $vorname;
-        $params['nachname_full'] = $nachname;
+        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE LOWER(TRIM(vorname)) = LOWER(TRIM(:vorname)) AND LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname)) ORDER BY id ASC LIMIT 1");
+        $stmt->execute([
+            'vorname' => $vorname,
+            'nachname' => $nachname,
+        ]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row !== false) {
+            return $row;
+        }
     }
 
     if ($nachname !== '') {
-        $conditions[] = 'LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname_only))';
-        $params['nachname_only'] = $nachname;
+        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE (vorname IS NULL OR TRIM(vorname) = '') AND LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname)) ORDER BY id ASC LIMIT 1");
+        $stmt->execute(['nachname' => $nachname]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row !== false) {
+            return $row;
+        }
     }
 
-    if ($lizenznummer !== null && $lizenznummer !== '') {
-        $conditions[] = 'LOWER(TRIM(lizenznummer)) = LOWER(TRIM(:lizenznummer))';
-        $params['lizenznummer'] = $lizenznummer;
-    }
-
-    if (!$conditions) {
-        return null;
-    }
-
-    $sql = "SELECT * FROM {$table} WHERE " . implode(' OR ', $conditions) . " ORDER BY id ASC LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $row !== false ? $row : null;
+    return null;
 }
 
 function save_blocklist_entry(array $entry): int
