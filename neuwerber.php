@@ -87,6 +87,8 @@ $prices = get_license_prices($currentYear);
                         <td><?= nl2br(htmlspecialchars($applicant['notizen'] ?? '')) ?></td>
                         <td class="actions">
                             <button class="primary assign">Lizenz zuweisen</button>
+                            <button class="secondary edit">Bearbeiten</button>
+                            <button class="danger delete">Löschen</button>
                         </td>
                     </tr>
                 <?php endforeach; ?>

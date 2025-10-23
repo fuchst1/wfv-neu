@@ -7,6 +7,8 @@
     const countDisplay = document.getElementById('newcomerCount');
     const table = document.getElementById('newcomerTable');
     const tableBody = table ? table.tBodies[0] : null;
+    const addModalTitle = addModal ? addModal.querySelector('h2') : null;
+    const addSubmitButton = addForm ? addForm.querySelector('button[type="submit"]') : null;
 
     if (!assignModal || !assignForm) {
         return;
@@ -37,6 +39,8 @@
 
     let currentApplicant = null;
     let currentRow = null;
+    let editingApplicantId = null;
+    let editingRow = null;
     const priceCache = {};
 
     if (typeof LICENSE_PRICES === 'object') {
@@ -75,7 +79,8 @@
             }
 
             const payload = {
-                action: 'create_newcomer',
+                action: editingApplicantId ? 'update_newcomer' : 'create_newcomer',
+                id: editingApplicantId,
                 vorname: addFields.firstName.value,
                 nachname: addFields.lastName.value,
                 strasse: addFields.street.value,
@@ -88,7 +93,9 @@
                 notizen: addFields.notes.value,
             };
 
-            fetch('api.php?action=create_newcomer', {
+            const action = editingApplicantId ? 'update_newcomer' : 'create_newcomer';
+
+            fetch(`api.php?action=${action}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -96,8 +103,12 @@
                 .then(r => r.json())
                 .then(result => {
                     if (result.success && result.bewerber) {
-                        addApplicantRow(result.bewerber);
-                        adjustNewcomerCount(1);
+                        if (editingApplicantId && editingRow) {
+                            updateApplicantRow(editingRow, result.bewerber);
+                        } else {
+                            addApplicantRow(result.bewerber);
+                            adjustNewcomerCount(1);
+                        }
                         hideModal(addModal);
                     } else {
                         alert(result.message || 'Neuwerber konnte nicht gespeichert werden.');
@@ -109,11 +120,7 @@
 
     const applicantRows = tableBody ? tableBody.querySelectorAll('tr[data-applicant]') : [];
     applicantRows.forEach(row => {
-        const applicant = JSON.parse(row.dataset.applicant);
-        const assignBtn = row.querySelector('.assign');
-        if (assignBtn) {
-            assignBtn.addEventListener('click', () => openAssignModal(applicant, row));
-        }
+        populateActionCell(row.querySelector('td.actions'), row);
     });
 
     assignFields.tip.addEventListener('input', updateTotal);
@@ -210,6 +217,14 @@
         addFields.date.value = getTodayDateString();
         addModal.hidden = false;
         addFields.firstName.focus();
+        editingApplicantId = null;
+        editingRow = null;
+        if (addModalTitle) {
+            addModalTitle.textContent = 'Neuwerber hinzufügen';
+        }
+        if (addSubmitButton) {
+            addSubmitButton.textContent = 'Speichern';
+        }
     }
 
     function hideModal(modal) {
@@ -222,7 +237,40 @@
         if (modal === addModal && addForm) {
             addForm.reset();
             clearValidation(addForm);
+            editingApplicantId = null;
+            editingRow = null;
         }
+    }
+
+    function openEditModal(applicant, row) {
+        if (!addModal || !addForm || !addFields) return;
+        editingApplicantId = applicant?.id || null;
+        editingRow = row || null;
+
+        addForm.reset();
+        clearValidation(addForm);
+
+        addFields.firstName.value = applicant?.vorname || '';
+        addFields.lastName.value = applicant?.nachname || '';
+        addFields.street.value = applicant?.strasse || '';
+        addFields.zip.value = applicant?.plz || '';
+        addFields.city.value = applicant?.ort || '';
+        addFields.phone.value = applicant?.telefon || '';
+        addFields.email.value = applicant?.email || '';
+        addFields.card.value = applicant?.fischerkartennummer || '';
+        const dateValue = applicant?.bewerbungsdatum;
+        addFields.date.value = dateValue && dateValue !== '0000-00-00' ? dateValue : '';
+        addFields.notes.value = applicant?.notizen || '';
+
+        if (addModalTitle) {
+            addModalTitle.textContent = 'Neuwerber bearbeiten';
+        }
+        if (addSubmitButton) {
+            addSubmitButton.textContent = 'Aktualisieren';
+        }
+
+        addModal.hidden = false;
+        addFields.firstName.focus();
     }
 
     function updateTotal() {
@@ -293,27 +341,47 @@
         ].join('<br>');
 
         const dateCell = document.createElement('td');
-        dateCell.textContent = applicant.bewerbungsdatum ? applicant.bewerbungsdatum : '–';
+        dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
 
         const notesCell = document.createElement('td');
         notesCell.innerHTML = escapeHtml(applicant.notizen || '').replace(/\n/g, '<br>');
 
         const actionCell = document.createElement('td');
-        actionCell.className = 'actions';
-        const assignButton = document.createElement('button');
-        assignButton.className = 'primary assign';
-        assignButton.type = 'button';
-        assignButton.textContent = 'Lizenz zuweisen';
-        assignButton.addEventListener('click', () => openAssignModal(applicant, row));
-        actionCell.appendChild(assignButton);
-
         row.appendChild(nameCell);
         row.appendChild(contactCell);
         row.appendChild(dateCell);
         row.appendChild(notesCell);
         row.appendChild(actionCell);
 
+        populateActionCell(actionCell, row);
+
         tableBody.insertBefore(row, tableBody.firstChild);
+        refreshTableSearch();
+    }
+
+    function updateApplicantRow(row, applicant) {
+        if (!row) return;
+        row.dataset.applicant = JSON.stringify(applicant);
+
+        const [nameCell, contactCell, dateCell, notesCell, actionCell] = row.cells;
+        if (nameCell) {
+            nameCell.innerHTML = `<strong>${escapeHtml(applicant.nachname || '')}, ${escapeHtml(applicant.vorname || '')}</strong>`;
+        }
+        if (contactCell) {
+            contactCell.innerHTML = [
+                `<small>${escapeHtml(applicant.strasse || '')}</small>`,
+                `<small>${escapeHtml(applicant.plz || '')} ${escapeHtml(applicant.ort || '')}</small>`,
+                `<small>Telefon: ${escapeHtml(applicant.telefon || '-')} · E-Mail: ${escapeHtml(applicant.email || '-')}</small>`,
+                `<small>Fischerkartennummer: ${escapeHtml(applicant.fischerkartennummer || '-')}</small>`
+            ].join('<br>');
+        }
+        if (dateCell) {
+            dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
+        }
+        if (notesCell) {
+            notesCell.innerHTML = escapeHtml(applicant.notizen || '').replace(/\n/g, '<br>');
+        }
+        populateActionCell(actionCell, row);
         refreshTableSearch();
     }
 
@@ -321,6 +389,75 @@
         if (!countDisplay) return;
         const current = parseInt(countDisplay.textContent, 10) || 0;
         countDisplay.textContent = String(Math.max(0, current + delta));
+    }
+
+    function populateActionCell(cell, row) {
+        if (!cell || !row) return;
+        cell.className = 'actions';
+        cell.innerHTML = '';
+
+        const assignButton = document.createElement('button');
+        assignButton.className = 'primary assign';
+        assignButton.type = 'button';
+        assignButton.textContent = 'Lizenz zuweisen';
+        assignButton.addEventListener('click', () => {
+            const applicant = JSON.parse(row.dataset.applicant || '{}');
+            openAssignModal(applicant, row);
+        });
+        cell.appendChild(assignButton);
+
+        const editButton = document.createElement('button');
+        editButton.className = 'secondary edit';
+        editButton.type = 'button';
+        editButton.textContent = 'Bearbeiten';
+        editButton.addEventListener('click', () => {
+            const applicant = JSON.parse(row.dataset.applicant || '{}');
+            openEditModal(applicant, row);
+        });
+        cell.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'danger delete';
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Löschen';
+        deleteButton.addEventListener('click', () => {
+            const applicant = JSON.parse(row.dataset.applicant || '{}');
+            confirmDeleteApplicant(applicant, row);
+        });
+        cell.appendChild(deleteButton);
+    }
+
+    function confirmDeleteApplicant(applicant, row) {
+        const id = applicant?.id ? parseInt(applicant.id, 10) : 0;
+        if (!id) {
+            return;
+        }
+
+        const name = [applicant.vorname || '', applicant.nachname || ''].join(' ').trim();
+        const question = name ? `Neuwerber "${name}" wirklich löschen?` : 'Neuwerber wirklich löschen?';
+        if (!window.confirm(question)) {
+            return;
+        }
+
+        fetch('api.php?action=delete_newcomer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_newcomer', id })
+        })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    if (row && row.parentElement) {
+                        row.remove();
+                        adjustNewcomerCount(-1);
+                        checkEmptyTable();
+                        refreshTableSearch();
+                    }
+                } else {
+                    alert(result.message || 'Neuwerber konnte nicht gelöscht werden.');
+                }
+            })
+            .catch(() => alert('Neuwerber konnte nicht gelöscht werden.'));
     }
 
     function refreshTableSearch() {
@@ -343,5 +480,21 @@
             '"': '&quot;',
             "'": '&#39;'
         }[char] || char));
+    }
+
+    function formatDateDisplay(value) {
+        if (!value || value === '0000-00-00') {
+            return '–';
+        }
+
+        const parts = String(value).split('-');
+        if (parts.length === 3) {
+            const [year, month, day] = parts;
+            if (day && month && year) {
+                return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+            }
+        }
+
+        return value;
     }
 })();

@@ -50,6 +50,12 @@ try {
         case 'create_newcomer':
             create_newcomer();
             break;
+        case 'update_newcomer':
+            update_newcomer();
+            break;
+        case 'delete_newcomer':
+            delete_newcomer();
+            break;
         case 'get_blocklist':
             get_blocklist();
             break;
@@ -691,4 +697,96 @@ function create_newcomer(): void
     $applicant = $stmt->fetch();
 
     echo json_encode(['success' => true, 'bewerber' => $applicant]);
+}
+
+function update_newcomer(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $id = isset($data['id']) ? (int)$data['id'] : 0;
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Neuwerber-ID.']);
+        return;
+    }
+
+    $firstName = trim((string)($data['vorname'] ?? ''));
+    $lastName = trim((string)($data['nachname'] ?? ''));
+    if ($firstName === '' || $lastName === '') {
+        echo json_encode(['success' => false, 'message' => 'Vor- und Nachname sind erforderlich.']);
+        return;
+    }
+
+    $street = trim((string)($data['strasse'] ?? '')) ?: null;
+    $zip = trim((string)($data['plz'] ?? '')) ?: null;
+    $city = trim((string)($data['ort'] ?? '')) ?: null;
+    $phone = trim((string)($data['telefon'] ?? '')) ?: null;
+    $emailRaw = trim((string)($data['email'] ?? ''));
+    $email = $emailRaw !== '' ? $emailRaw : null;
+    $card = trim((string)($data['fischerkartennummer'] ?? '')) ?: null;
+    $dateRaw = trim((string)($data['bewerbungsdatum'] ?? ''));
+    $date = $dateRaw !== '' ? $dateRaw : null;
+    $notesRaw = trim((string)($data['notizen'] ?? ''));
+    $notes = $notesRaw !== '' ? $notesRaw : null;
+
+    if ($date && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Bewerbungsdatum.']);
+        return;
+    }
+
+    if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige E-Mail-Adresse.']);
+        return;
+    }
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('UPDATE bewerber SET vorname=:vorname, nachname=:nachname, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte, bewerbungsdatum=:datum, notizen=:notizen WHERE id = :id');
+    $stmt->execute([
+        'vorname' => $firstName,
+        'nachname' => $lastName,
+        'strasse' => $street,
+        'plz' => $zip,
+        'ort' => $city,
+        'telefon' => $phone,
+        'email' => $email,
+        'karte' => $card,
+        'datum' => $date,
+        'notizen' => $notes,
+        'id' => $id,
+    ]);
+
+    $stmt = $pdo->prepare('SELECT * FROM bewerber WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+    $applicant = $stmt->fetch();
+
+    if (!$applicant) {
+        echo json_encode(['success' => false, 'message' => 'Neuwerber nicht gefunden.']);
+        return;
+    }
+
+    echo json_encode(['success' => true, 'bewerber' => $applicant]);
+}
+
+function delete_newcomer(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $id = isset($data['id']) ? (int)$data['id'] : 0;
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Neuwerber-ID.']);
+        return;
+    }
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('DELETE FROM bewerber WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+
+    if ($stmt->rowCount() === 0) {
+        echo json_encode(['success' => false, 'message' => 'Neuwerber nicht gefunden.']);
+        return;
+    }
+
+    echo json_encode(['success' => true]);
 }
