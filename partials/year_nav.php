@@ -24,4 +24,5 @@ $showCreateYearButton = $showCreateYearButton ?? false;
     <?php endif; ?>
     <a class="button-link<?= $currentPage === 'neuwerber' ? ' active' : '' ?>" href="neuwerber.php">Neuwerber</a>
     <a class="button-link<?= $currentPage === 'boats' ? ' active' : '' ?>" href="boats.php">Bootsübersicht</a>
+    <a class="button-link<?= $currentPage === 'blocklist' ? ' active' : '' ?>" href="sperrliste.php">Sperrliste</a>
 </nav>

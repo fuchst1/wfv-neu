@@ -50,6 +50,15 @@ try {
         case 'create_newcomer':
             create_newcomer();
             break;
+        case 'get_blocklist':
+            get_blocklist();
+            break;
+        case 'save_block_entry':
+            save_block_entry();
+            break;
+        case 'delete_block_entry':
+            delete_block_entry();
+            break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unbekannte Aktion.']);
     }
@@ -91,24 +100,68 @@ function save_license(): void
     ensure_boats_table_exists();
     $boatTable = boats_table();
 
+    $licenseePayload = $data['licensee'] ?? [];
+    $licensePayload = $data['license'] ?? [];
+    $boatPayload = $data['boat'] ?? [];
+    $force = !empty($data['force']);
+
+    $licenseeId = isset($licenseePayload['id']) ? (int)$licenseePayload['id'] : 0;
+    $vorname = trim((string)($licenseePayload['vorname'] ?? ''));
+    $nachname = trim((string)($licenseePayload['nachname'] ?? ''));
+
+    if ($vorname === '' || $nachname === '') {
+        echo json_encode(['success' => false, 'message' => 'Vor- und Nachname sind erforderlich.']);
+        return;
+    }
+
+    $licenseePayload['vorname'] = $vorname;
+    $licenseePayload['nachname'] = $nachname;
+
+    $blockedEntry = find_blocklist_entry($vorname, $nachname);
+    if ($blockedEntry && !$force) {
+        echo json_encode([
+            'success' => false,
+            'blocked' => true,
+            'entry' => $blockedEntry,
+            'message' => 'Der Lizenznehmer befindet sich auf der Sperrliste.'
+        ]);
+        return;
+    }
+
+    $optionalFields = ['strasse', 'plz', 'ort', 'telefon', 'email', 'fischerkartennummer'];
+    foreach ($optionalFields as $field) {
+        if (array_key_exists($field, $licenseePayload)) {
+            $value = trim((string)$licenseePayload[$field]);
+            $licenseePayload[$field] = $value === '' ? null : $value;
+        } else {
+            $licenseePayload[$field] = null;
+        }
+    }
+
+    $licenseId = isset($licensePayload['id']) ? (int)$licensePayload['id'] : 0;
+    $lizenztyp = $licensePayload['lizenztyp'] ?? '';
+    $kosten = (float)($licensePayload['kosten'] ?? 0);
+    $trinkgeld = (float)($licensePayload['trinkgeld'] ?? 0);
+    $zahlungsdatum = isset($licensePayload['zahlungsdatum']) && $licensePayload['zahlungsdatum'] !== '' ? $licensePayload['zahlungsdatum'] : null;
+    $notizenRaw = isset($licensePayload['notizen']) ? trim((string)$licensePayload['notizen']) : '';
+    $notizen = $notizenRaw === '' ? null : $notizenRaw;
+    $gesamt = $kosten + $trinkgeld;
+
     $pdo = get_pdo();
     $pdo->beginTransaction();
 
     try {
-        $licenseeId = isset($data['licensee']['id']) ? (int)$data['licensee']['id'] : 0;
-        $licenseePayload = $data['licensee'];
-
         if ($licenseeId > 0) {
             $stmt = $pdo->prepare('UPDATE lizenznehmer SET vorname=:vorname, nachname=:nachname, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte WHERE id = :id');
             $stmt->execute([
                 'vorname' => $licenseePayload['vorname'],
                 'nachname' => $licenseePayload['nachname'],
-                'strasse' => $licenseePayload['strasse'] ?? null,
-                'plz' => $licenseePayload['plz'] ?? null,
-                'ort' => $licenseePayload['ort'] ?? null,
-                'telefon' => $licenseePayload['telefon'] ?? null,
-                'email' => $licenseePayload['email'] ?? null,
-                'karte' => $licenseePayload['fischerkartennummer'] ?? null,
+                'strasse' => $licenseePayload['strasse'],
+                'plz' => $licenseePayload['plz'],
+                'ort' => $licenseePayload['ort'],
+                'telefon' => $licenseePayload['telefon'],
+                'email' => $licenseePayload['email'],
+                'karte' => $licenseePayload['fischerkartennummer'],
                 'id' => $licenseeId,
             ]);
         } else {
@@ -116,53 +169,48 @@ function save_license(): void
             $stmt->execute([
                 'vorname' => $licenseePayload['vorname'],
                 'nachname' => $licenseePayload['nachname'],
-                'strasse' => $licenseePayload['strasse'] ?? null,
-                'plz' => $licenseePayload['plz'] ?? null,
-                'ort' => $licenseePayload['ort'] ?? null,
-                'telefon' => $licenseePayload['telefon'] ?? null,
-                'email' => $licenseePayload['email'] ?? null,
-                'karte' => $licenseePayload['fischerkartennummer'] ?? null,
+                'strasse' => $licenseePayload['strasse'],
+                'plz' => $licenseePayload['plz'],
+                'ort' => $licenseePayload['ort'],
+                'telefon' => $licenseePayload['telefon'],
+                'email' => $licenseePayload['email'],
+                'karte' => $licenseePayload['fischerkartennummer'],
             ]);
             $licenseeId = (int)$pdo->lastInsertId();
         }
-
-        $licenseId = isset($data['license']['id']) ? (int)$data['license']['id'] : 0;
-        $licensePayload = $data['license'];
-        $gesamt = (float)$licensePayload['kosten'] + (float)$licensePayload['trinkgeld'];
 
         if ($licenseId > 0) {
             $stmt = $pdo->prepare("UPDATE {$licenseTable} SET lizenznehmer_id=:licensee_id, lizenztyp=:typ, kosten=:kosten, trinkgeld=:trinkgeld, gesamt=:gesamt, zahlungsdatum=:datum, notizen=:notizen WHERE id=:id");
             $stmt->execute([
                 'licensee_id' => $licenseeId,
-                'typ' => $licensePayload['lizenztyp'],
-                'kosten' => $licensePayload['kosten'],
-                'trinkgeld' => $licensePayload['trinkgeld'],
+                'typ' => $lizenztyp,
+                'kosten' => $kosten,
+                'trinkgeld' => $trinkgeld,
                 'gesamt' => $gesamt,
-                'datum' => $licensePayload['zahlungsdatum'] ?: null,
-                'notizen' => $licensePayload['notizen'] ?? null,
+                'datum' => $zahlungsdatum,
+                'notizen' => $notizen,
                 'id' => $licenseId,
             ]);
         } else {
             $stmt = $pdo->prepare("INSERT INTO {$licenseTable} (lizenznehmer_id, lizenztyp, kosten, trinkgeld, gesamt, zahlungsdatum, notizen) VALUES (:licensee_id, :typ, :kosten, :trinkgeld, :gesamt, :datum, :notizen)");
             $stmt->execute([
                 'licensee_id' => $licenseeId,
-                'typ' => $licensePayload['lizenztyp'],
-                'kosten' => $licensePayload['kosten'],
-                'trinkgeld' => $licensePayload['trinkgeld'],
+                'typ' => $lizenztyp,
+                'kosten' => $kosten,
+                'trinkgeld' => $trinkgeld,
                 'gesamt' => $gesamt,
-                'datum' => $licensePayload['zahlungsdatum'] ?: null,
-                'notizen' => $licensePayload['notizen'] ?? null,
+                'datum' => $zahlungsdatum,
+                'notizen' => $notizen,
             ]);
             $licenseId = (int)$pdo->lastInsertId();
         }
 
-        $boatPayload = $data['boat'] ?? null;
-        if ($licensePayload['lizenztyp'] === 'Boot') {
-            $boatNumber = isset($boatPayload['bootnummer']) ? trim((string)$boatPayload['bootnummer']) : null;
-            $boatNumber = $boatNumber === '' ? null : $boatNumber;
-            $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
-            $boatNotes = $boatNotes === '' ? null : $boatNotes;
+        $boatNumber = isset($boatPayload['bootnummer']) ? trim((string)$boatPayload['bootnummer']) : '';
+        $boatNumber = $boatNumber === '' ? null : $boatNumber;
+        $boatNotesRaw = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : '';
+        $boatNotes = $boatNotesRaw === '' ? null : $boatNotesRaw;
 
+        if ($lizenztyp === 'Boot') {
             $stmt = $pdo->prepare("SELECT id FROM {$boatTable} WHERE lizenznehmer_id = :id ORDER BY id ASC LIMIT 1");
             $stmt->execute(['id' => $licenseeId]);
             $boatId = $stmt->fetchColumn();
@@ -470,6 +518,54 @@ function get_prices(): void
     }
     $prices = get_license_prices($year);
     echo json_encode(['success' => true, 'preise' => $prices]);
+}
+
+function get_blocklist(): void
+{
+    $entries = get_blocklist_entries();
+    echo json_encode(['success' => true, 'entries' => $entries]);
+}
+
+function save_block_entry(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['entry'])) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
+        return;
+    }
+
+    $entry = $data['entry'];
+    $vorname = trim((string)($entry['vorname'] ?? ''));
+    $nachname = trim((string)($entry['nachname'] ?? ''));
+    $lizenznummer = trim((string)($entry['lizenznummer'] ?? ''));
+    $id = isset($entry['id']) ? (int)$entry['id'] : 0;
+
+    if ($vorname === '' || $nachname === '') {
+        echo json_encode(['success' => false, 'message' => 'Vor- und Nachname sind erforderlich.']);
+        return;
+    }
+
+    save_blocklist_entry([
+        'id' => $id,
+        'vorname' => $vorname,
+        'nachname' => $nachname,
+        'lizenznummer' => $lizenznummer,
+    ]);
+
+    echo json_encode(['success' => true]);
+}
+
+function delete_block_entry(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $id = isset($data['id']) ? (int)$data['id'] : 0;
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige ID.']);
+        return;
+    }
+
+    $success = delete_blocklist_entry($id);
+    echo json_encode(['success' => $success]);
 }
 
 function assign_newcomer(): void
