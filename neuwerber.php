@@ -121,7 +121,7 @@ $prices = get_license_prices($currentYear);
                         <input type="text" id="applicantCity">
                     </label>
                     <label>Telefon
-                        <input type="text" id="applicantPhone">
+                        <input type="text" id="applicantPhone" data-validate="phone">
                     </label>
                     <label>E-Mail
                         <input type="email" id="applicantEmail" data-validate="email">
