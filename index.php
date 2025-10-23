@@ -59,6 +59,10 @@ $yearOverview = get_year_overview($currentYear);
 
     <section class="table-section">
         <div class="table-filter">
+            <div class="table-actions">
+                <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=csv">CSV exportieren</a>
+                <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=xlsx">XLSX exportieren</a>
+            </div>
             <label class="table-search">
                 <span class="table-search-label">Suche:</span>
                 <input type="search" id="licenseSearch" placeholder="Lizenznehmer, Lizenztyp, Notizen …" data-table-search="#licenseTable">
