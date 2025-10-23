@@ -181,19 +181,19 @@ $yearOverview = get_year_overview($currentYear);
                     <?php endforeach; ?>
                 </select>
                 <div class="form-grid">
-                    <label>Vorname
+                    <label>Vorname <span aria-hidden="true">*</span>
                         <input type="text" id="vorname" data-validate="required" required>
                     </label>
-                    <label>Nachname
+                    <label>Nachname <span aria-hidden="true">*</span>
                         <input type="text" id="nachname" data-validate="required" required>
                     </label>
-                    <label>Straße
-                        <input type="text" id="strasse">
+                    <label>Straße <span aria-hidden="true">*</span>
+                        <input type="text" id="strasse" data-validate="required" required>
                     </label>
-                    <label>PLZ
-                        <input type="text" id="plz" data-validate="zip">
+                    <label>PLZ <span aria-hidden="true">*</span>
+                        <input type="text" id="plz" data-validate="required,zip" required>
                     </label>
-                    <label>Ort
+                    <label>Ort <span aria-hidden="true">*</span>
                         <input type="text" id="ort" data-validate="required" required>
                     </label>
                     <label>Telefon
@@ -202,8 +202,8 @@ $yearOverview = get_year_overview($currentYear);
                     <label>E-Mail
                         <input type="email" id="email" data-validate="email">
                     </label>
-                    <label>Fischerkartennummer
-                        <input type="text" id="fischerkartennummer">
+                    <label>Fischerkartennummer <span aria-hidden="true">*</span>
+                        <input type="text" id="fischerkartennummer" data-validate="required" required>
                     </label>
                 </div>
             </section>
