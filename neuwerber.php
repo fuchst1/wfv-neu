@@ -160,7 +160,7 @@ $prices = get_license_prices($currentYear);
                     <label>Lizenztyp
                         <select id="assignType" data-validate="required" required>
                             <option value="">– bitte wählen –</option>
-                            <option value="Angel">Angel</option>
+                            <option value="Angel" selected>Angel</option>
                             <option value="Daubel">Daubel</option>
                             <option value="Boot">Boot</option>
                             <option value="Kinder">Kinder</option>

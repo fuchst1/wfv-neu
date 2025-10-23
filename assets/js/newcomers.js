@@ -191,7 +191,7 @@
         clearValidation(assignForm);
 
         assignFields.year.value = CURRENT_YEAR;
-        assignFields.type.value = '';
+        assignFields.type.value = 'Angel';
         assignFields.cost.value = '';
         assignFields.tip.value = '0.00';
         assignFields.total.value = '0.00';
@@ -199,6 +199,7 @@
         assignFields.notes.value = applicant.notizen || '';
 
         assignModal.hidden = false;
+        assignFields.type.dispatchEvent(new Event('change'));
         assignFields.year.dispatchEvent(new Event('change'));
     }
 
