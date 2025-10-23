@@ -31,19 +31,11 @@ $yearOverview = get_year_overview($currentYear);
         <h1>Lizenzverwaltung</h1>
         <p>Wörderner Fischereiverein</p>
     </div>
-    <nav class="year-nav">
-        <span>Jahr wählen:</span>
-        <ul>
-            <?php foreach ($years as $year): ?>
-                <li class="<?= $year === $currentYear ? 'active' : '' ?>">
-                    <a href="?jahr=<?= $year ?>"><?= $year ?></a>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-        <button class="primary" id="openCreateYear">Neues Jahr anlegen</button>
-        <a class="button-link" href="neuwerber.php">Neuwerber</a>
-        <a class="button-link" href="boats.php">Bootsübersicht</a>
-    </nav>
+    <?php
+        $currentPage = 'index';
+        $showCreateYearButton = true;
+        include __DIR__ . '/partials/year_nav.php';
+    ?>
 </header>
 
 <main>
