@@ -305,6 +305,20 @@ $yearOverview = get_year_overview($currentYear);
     </div>
 </div>
 
+<div class="modal" id="blockWarningModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Auf Sperrliste</h2>
+            <button class="close" id="closeBlockWarning" type="button">&times;</button>
+        </header>
+        <p id="blockWarningText">Der ausgewählte Lizenznehmer steht auf der Sperrliste.</p>
+        <footer class="modal-footer">
+            <button type="button" class="secondary" id="cancelBlockWarning">Zurück</button>
+            <button type="button" class="primary" id="confirmBlockOverride">Trotzdem speichern</button>
+        </footer>
+    </div>
+</div>
+
 <div class="modal" id="createYearModal" hidden>
     <div class="modal-content">
         <header>

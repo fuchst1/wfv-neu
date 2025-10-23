@@ -4,6 +4,11 @@
     const deleteModal = document.getElementById('deleteModal');
     const extendModal = document.getElementById('extendModal');
     const createYearModal = document.getElementById('createYearModal');
+    const blockWarningModal = document.getElementById('blockWarningModal');
+    const blockWarningText = document.getElementById('blockWarningText');
+    const confirmBlockOverride = document.getElementById('confirmBlockOverride');
+    const cancelBlockWarning = document.getElementById('cancelBlockWarning');
+    const closeBlockWarningButton = document.getElementById('closeBlockWarning');
 
     const licenseFields = {
         id: document.getElementById('licenseId'),
@@ -40,6 +45,7 @@
 
     let currentRow = null;
     let currentLicense = null;
+    let pendingBlockPayload = null;
 
     Validation.attach(licenseForm);
     Validation.attach(document.getElementById('extendForm'));
@@ -48,6 +54,29 @@
     document.querySelectorAll('[data-close]').forEach(btn => {
         btn.addEventListener('click', () => closeModals());
     });
+
+    if (cancelBlockWarning) {
+        cancelBlockWarning.addEventListener('click', () => {
+            closeBlockWarning();
+        });
+    }
+
+    if (closeBlockWarningButton) {
+        closeBlockWarningButton.addEventListener('click', () => {
+            closeBlockWarning();
+        });
+    }
+
+    if (confirmBlockOverride) {
+        confirmBlockOverride.addEventListener('click', () => {
+            if (!pendingBlockPayload) {
+                closeBlockWarning();
+                return;
+            }
+            blockWarningModal.hidden = true;
+            submitLicensePayload(pendingBlockPayload, true);
+        });
+    }
 
     document.getElementById('openAddLicense').addEventListener('click', () => {
         openLicenseModal(null);
@@ -139,20 +168,8 @@
         event.preventDefault();
         if (!licenseForm.checkValidity()) return;
         const payload = buildLicensePayload();
-        fetch('api.php?action=save_license', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-            .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    window.location.reload();
-                } else {
-                    alert(result.message || 'Speichern fehlgeschlagen');
-                }
-            })
-            .catch(() => alert('Speichern fehlgeschlagen'));
+        pendingBlockPayload = payload;
+        submitLicensePayload(payload, false);
     });
 
     document.getElementById('confirmDelete').addEventListener('click', () => {
@@ -228,6 +245,7 @@
     function openLicenseModal(data, row) {
         currentRow = row || null;
         currentLicense = data || null;
+        closeBlockWarning();
         document.getElementById('licenseModalTitle').textContent = data ? 'Lizenz bearbeiten' : 'Neue Lizenz';
         resetLicenseForm();
         if (!data) {
@@ -299,7 +317,12 @@
     }
 
     function closeModals() {
-        [licenseModal, deleteModal, extendModal, createYearModal].forEach(modal => modal.hidden = true);
+        [licenseModal, deleteModal, extendModal, createYearModal].forEach(modal => {
+            if (modal) {
+                modal.hidden = true;
+            }
+        });
+        closeBlockWarning();
     }
 
     function updateTotal() {
@@ -326,6 +349,72 @@
         const today = new Date();
         today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
         return today.toISOString().split('T')[0];
+    }
+
+    function submitLicensePayload(payload, force) {
+        const requestBody = { ...payload, force };
+        fetch('api.php?action=save_license', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(result => handleLicenseSaveResult(result, payload, force))
+            .catch(() => {
+                pendingBlockPayload = null;
+                alert('Speichern fehlgeschlagen');
+            });
+    }
+
+    function handleLicenseSaveResult(result, payload, force) {
+        if (result.success) {
+            pendingBlockPayload = null;
+            window.location.reload();
+            return;
+        }
+
+        if (result.blocked && !force) {
+            pendingBlockPayload = payload;
+            showBlockWarning(result.entry, payload);
+            return;
+        }
+
+        pendingBlockPayload = null;
+        alert(result.message || 'Speichern fehlgeschlagen');
+    }
+
+    function showBlockWarning(entry, payload) {
+        const licensee = payload && payload.licensee ? payload.licensee : {};
+        const firstName = licensee.vorname || '';
+        const lastName = licensee.nachname || '';
+        const displayName = [lastName, firstName].filter(Boolean).join(', ');
+        let message = 'Der ausgewählte Lizenznehmer steht auf der Sperrliste.';
+        if (displayName) {
+            message = `Der Lizenznehmer ${displayName} steht auf der Sperrliste.`;
+        }
+        if (entry && entry.lizenznummer) {
+            message += ` Lizenznummer: ${entry.lizenznummer}.`;
+        }
+        message += ' Möchtest du trotzdem fortfahren?';
+
+        if (!blockWarningModal || !blockWarningText || !confirmBlockOverride) {
+            if (window.confirm(message)) {
+                submitLicensePayload(payload, true);
+            } else {
+                pendingBlockPayload = null;
+            }
+            return;
+        }
+
+        blockWarningText.textContent = message;
+        blockWarningModal.hidden = false;
+    }
+
+    function closeBlockWarning() {
+        if (blockWarningModal) {
+            blockWarningModal.hidden = true;
+        }
+        pendingBlockPayload = null;
     }
 
     function buildLicensePayload() {

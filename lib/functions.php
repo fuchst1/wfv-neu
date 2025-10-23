@@ -30,6 +30,11 @@ function boats_table(): string
     return 'boote';
 }
 
+function blocklist_table(): string
+{
+    return 'sperrliste';
+}
+
 function ensure_boats_table_exists(): void
 {
     $pdo = get_pdo();
@@ -44,6 +49,21 @@ function ensure_boats_table_exists(): void
         aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT fk_boote_lizenznehmer FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id) ON DELETE SET NULL,
         INDEX idx_boote_lizenznehmer (lizenznehmer_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function ensure_blocklist_table_exists(): void
+{
+    $pdo = get_pdo();
+    $blocklistTable = blocklist_table();
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS {$blocklistTable} (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        vorname VARCHAR(100) NOT NULL,
+        nachname VARCHAR(100) NOT NULL,
+        lizenznummer VARCHAR(100),
+        erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
@@ -68,6 +88,75 @@ function ensure_year_exists(int $year): bool
     ensure_boats_table_exists();
 
     return true;
+}
+
+function get_blocklist_entries(): array
+{
+    $pdo = get_pdo();
+    ensure_blocklist_table_exists();
+    $table = blocklist_table();
+
+    $stmt = $pdo->query("SELECT * FROM {$table} ORDER BY nachname, vorname, id");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function find_blocklist_entry(string $vorname, string $nachname): ?array
+{
+    $pdo = get_pdo();
+    ensure_blocklist_table_exists();
+    $table = blocklist_table();
+
+    $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE LOWER(TRIM(vorname)) = LOWER(TRIM(:vorname)) AND LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname)) ORDER BY id ASC LIMIT 1");
+    $stmt->execute([
+        'vorname' => $vorname,
+        'nachname' => $nachname,
+    ]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row !== false ? $row : null;
+}
+
+function save_blocklist_entry(array $entry): int
+{
+    $pdo = get_pdo();
+    ensure_blocklist_table_exists();
+    $table = blocklist_table();
+
+    $id = isset($entry['id']) ? (int)$entry['id'] : 0;
+    $vorname = trim((string)($entry['vorname'] ?? ''));
+    $nachname = trim((string)($entry['nachname'] ?? ''));
+    $lizenznummerRaw = trim((string)($entry['lizenznummer'] ?? ''));
+    $lizenznummer = $lizenznummerRaw !== '' ? $lizenznummerRaw : null;
+
+    if ($id > 0) {
+        $stmt = $pdo->prepare("UPDATE {$table} SET vorname = :vorname, nachname = :nachname, lizenznummer = :lizenznummer WHERE id = :id");
+        $stmt->execute([
+            'vorname' => $vorname,
+            'nachname' => $nachname,
+            'lizenznummer' => $lizenznummer,
+            'id' => $id,
+        ]);
+        return $id;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO {$table} (vorname, nachname, lizenznummer) VALUES (:vorname, :nachname, :lizenznummer)");
+    $stmt->execute([
+        'vorname' => $vorname,
+        'nachname' => $nachname,
+        'lizenznummer' => $lizenznummer,
+    ]);
+
+    return (int)$pdo->lastInsertId();
+}
+
+function delete_blocklist_entry(int $id): bool
+{
+    $pdo = get_pdo();
+    ensure_blocklist_table_exists();
+    $table = blocklist_table();
+
+    $stmt = $pdo->prepare("DELETE FROM {$table} WHERE id = :id");
+    return $stmt->execute(['id' => $id]);
 }
 
 function get_license_prices(int $year): array
