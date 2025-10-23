@@ -105,20 +105,20 @@ $prices = get_license_prices($currentYear);
         <form id="newApplicantForm">
             <section class="form-section">
                 <div class="form-grid">
-                    <label>Vorname
+                    <label>Vorname <span aria-hidden="true">*</span>
                         <input type="text" id="applicantFirstName" data-validate="required" required>
                     </label>
-                    <label>Nachname
+                    <label>Nachname <span aria-hidden="true">*</span>
                         <input type="text" id="applicantLastName" data-validate="required" required>
                     </label>
-                    <label>Straße
-                        <input type="text" id="applicantStreet">
+                    <label>Straße <span aria-hidden="true">*</span>
+                        <input type="text" id="applicantStreet" data-validate="required" required>
                     </label>
-                    <label>PLZ
-                        <input type="text" id="applicantZip" data-validate="zip">
+                    <label>PLZ <span aria-hidden="true">*</span>
+                        <input type="text" id="applicantZip" data-validate="required,zip" required>
                     </label>
-                    <label>Ort
-                        <input type="text" id="applicantCity">
+                    <label>Ort <span aria-hidden="true">*</span>
+                        <input type="text" id="applicantCity" data-validate="required" required>
                     </label>
                     <label>Telefon
                         <input type="text" id="applicantPhone" data-validate="phone">
@@ -126,8 +126,8 @@ $prices = get_license_prices($currentYear);
                     <label>E-Mail
                         <input type="email" id="applicantEmail" data-validate="email">
                     </label>
-                    <label>Fischerkartennummer
-                        <input type="text" id="applicantCard">
+                    <label>Fischerkartennummer <span aria-hidden="true">*</span>
+                        <input type="text" id="applicantCard" data-validate="required" required>
                     </label>
                 </div>
                 <label>Bewerbungsdatum
