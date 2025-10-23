@@ -1,6 +1,20 @@
 <?php
 require_once __DIR__ . '/lib/functions.php';
 
+$years = available_years();
+$currentYear = isset($_GET['jahr']) ? (int)$_GET['jahr'] : null;
+
+if (!$currentYear && $years) {
+    $currentYear = max($years);
+}
+
+if (!$currentYear) {
+    $currentYear = (int)date('Y');
+}
+
+ensure_year_exists($currentYear);
+$years = available_years();
+
 $boats = get_boats_overview();
 ?>
 <!DOCTYPE html>
@@ -17,10 +31,10 @@ $boats = get_boats_overview();
         <h1>Bootsübersicht</h1>
         <p>Wörderner Fischereiverein</p>
     </div>
-    <nav class="year-nav">
-        <a class="button-link" href="index.php">Zur Lizenzverwaltung</a>
-        <a class="button-link" href="neuwerber.php">Neuwerber</a>
-    </nav>
+    <?php
+        $currentPage = 'boats';
+        include __DIR__ . '/partials/year_nav.php';
+    ?>
 </header>
 
 <main>
