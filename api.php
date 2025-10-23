@@ -87,8 +87,9 @@ function save_license(): void
     }
 
     $licenseTable = license_table($year);
-    $boatTable = boat_table($year);
     ensure_year_exists($year);
+    ensure_boats_table_exists();
+    $boatTable = boats_table();
 
     $pdo = get_pdo();
     $pdo->beginTransaction();
@@ -157,27 +158,30 @@ function save_license(): void
 
         $boatPayload = $data['boat'] ?? null;
         if ($licensePayload['lizenztyp'] === 'Boot') {
-            $stmt = $pdo->prepare("SELECT id FROM {$boatTable} WHERE lizenz_id = :id");
-            $stmt->execute(['id' => $licenseId]);
+            $boatNumber = isset($boatPayload['bootnummer']) ? trim((string)$boatPayload['bootnummer']) : null;
+            $boatNumber = $boatNumber === '' ? null : $boatNumber;
+            $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
+            $boatNotes = $boatNotes === '' ? null : $boatNotes;
+
+            $stmt = $pdo->prepare("SELECT id FROM {$boatTable} WHERE lizenznehmer_id = :id ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['id' => $licenseeId]);
             $boatId = $stmt->fetchColumn();
+
             if ($boatId) {
-                $stmt = $pdo->prepare("UPDATE {$boatTable} SET bootnummer=:nummer, notizen=:notizen WHERE lizenz_id=:id");
+                $stmt = $pdo->prepare("UPDATE {$boatTable} SET bootnummer = :nummer, notizen = :notizen WHERE id = :id");
                 $stmt->execute([
-                    'nummer' => $boatPayload['bootnummer'] ?? null,
-                    'notizen' => $boatPayload['notizen'] ?? null,
-                    'id' => $licenseId,
+                    'nummer' => $boatNumber,
+                    'notizen' => $boatNotes,
+                    'id' => $boatId,
                 ]);
-            } else {
-                $stmt = $pdo->prepare("INSERT INTO {$boatTable} (lizenz_id, bootnummer, notizen) VALUES (:id, :nummer, :notizen)");
+            } elseif ($boatNumber !== null || $boatNotes !== null) {
+                $stmt = $pdo->prepare("INSERT INTO {$boatTable} (lizenznehmer_id, bootnummer, notizen) VALUES (:licensee_id, :nummer, :notizen)");
                 $stmt->execute([
-                    'id' => $licenseId,
-                    'nummer' => $boatPayload['bootnummer'] ?? null,
-                    'notizen' => $boatPayload['notizen'] ?? null,
+                    'licensee_id' => $licenseeId,
+                    'nummer' => $boatNumber,
+                    'notizen' => $boatNotes,
                 ]);
             }
-        } else {
-            $stmt = $pdo->prepare("DELETE FROM {$boatTable} WHERE lizenz_id = :id");
-            $stmt->execute(['id' => $licenseId]);
         }
 
         $pdo->commit();
@@ -196,27 +200,22 @@ function save_boat(): void
         return;
     }
 
-    $year = (int)($data['year'] ?? 0);
-    if ($year < 2000) {
-        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
-        return;
-    }
-
     $boatPayload = $data['boat'] ?? [];
     $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
-    $boatNotes = $boatPayload['notizen'] ?? null;
+    $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
+    $boatNotes = $boatNotes === '' ? null : $boatNotes;
 
     if ($boatNumber === '') {
         echo json_encode(['success' => false, 'message' => 'Bootsnummer ist erforderlich.']);
         return;
     }
 
-    ensure_year_exists($year);
+    ensure_boats_table_exists();
 
-    $boatTable = boat_table($year);
+    $boatTable = boats_table();
     $pdo = get_pdo();
 
-    $stmt = $pdo->prepare("INSERT INTO {$boatTable} (lizenz_id, bootnummer, notizen) VALUES (NULL, :nummer, :notizen)");
+    $stmt = $pdo->prepare("INSERT INTO {$boatTable} (lizenznehmer_id, bootnummer, notizen) VALUES (NULL, :nummer, :notizen)");
     $stmt->execute([
         'nummer' => $boatNumber,
         'notizen' => $boatNotes !== null ? $boatNotes : null,
@@ -233,19 +232,19 @@ function update_boat(): void
         return;
     }
 
-    $year = (int)($data['year'] ?? 0);
     $boatPayload = $data['boat'] ?? [];
     $boatId = (int)($boatPayload['id'] ?? 0);
     $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
-    $boatNotes = $boatPayload['notizen'] ?? null;
+    $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
+    $boatNotes = $boatNotes === '' ? null : $boatNotes;
 
-    if ($year < 2000 || $boatId <= 0 || $boatNumber === '') {
+    if ($boatId <= 0 || $boatNumber === '') {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
     }
 
-    ensure_year_exists($year);
-    $boatTable = boat_table($year);
+    ensure_boats_table_exists();
+    $boatTable = boats_table();
     $pdo = get_pdo();
 
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
@@ -268,15 +267,14 @@ function update_boat(): void
 function delete_boat(): void
 {
     $data = json_decode(file_get_contents('php://input'), true);
-    $year = (int)($data['year'] ?? 0);
     $boatId = (int)($data['boat_id'] ?? 0);
-    if ($year < 2000 || $boatId <= 0) {
+    if ($boatId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
     }
 
-    ensure_year_exists($year);
-    $boatTable = boat_table($year);
+    ensure_boats_table_exists();
+    $boatTable = boats_table();
     $pdo = get_pdo();
 
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
@@ -294,40 +292,35 @@ function delete_boat(): void
 
 function get_boat_licenses(): void
 {
-    $year = (int)($_GET['year'] ?? 0);
-    if ($year < 2000) {
-        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
-        return;
-    }
-
-    ensure_year_exists($year);
-    $licenseTable = license_table($year);
-    $boatTable = boat_table($year);
-
     $pdo = get_pdo();
-    $sql = "SELECT l.id, l.notizen, l.zahlungsdatum, ln.vorname, ln.nachname, b.id AS boat_id, b.bootnummer\n            FROM {$licenseTable} l\n            JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id\n            LEFT JOIN {$boatTable} b ON b.lizenz_id = l.id\n            WHERE l.lizenztyp = 'Boot'\n            ORDER BY ln.nachname, ln.vorname, l.id";
+    ensure_boats_table_exists();
+    $boatsTable = boats_table();
+
+    $sql = "SELECT ln.id, ln.vorname, ln.nachname, ln.telefon, ln.email,
+                   (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boat_id,
+                   (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer
+            FROM lizenznehmer ln
+            ORDER BY ln.nachname, ln.vorname, ln.id";
 
     $stmt = $pdo->query($sql);
-    $licenses = $stmt->fetchAll();
+    $licensees = $stmt->fetchAll();
 
-    echo json_encode(['success' => true, 'licenses' => $licenses]);
+    echo json_encode(['success' => true, 'licensees' => $licensees]);
 }
 
 function assign_boat_license(): void
 {
     $data = json_decode(file_get_contents('php://input'), true);
-    $year = (int)($data['year'] ?? 0);
     $boatId = (int)($data['boat_id'] ?? 0);
-    $licenseId = isset($data['license_id']) && $data['license_id'] !== null ? (int)$data['license_id'] : null;
+    $licenseeId = isset($data['licensee_id']) && $data['licensee_id'] !== null ? (int)$data['licensee_id'] : null;
 
-    if ($year < 2000 || $boatId <= 0) {
+    if ($boatId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
     }
 
-    ensure_year_exists($year);
-    $licenseTable = license_table($year);
-    $boatTable = boat_table($year);
+    ensure_boats_table_exists();
+    $boatTable = boats_table();
     $pdo = get_pdo();
 
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$boatTable} WHERE id = :id");
@@ -337,33 +330,28 @@ function assign_boat_license(): void
         return;
     }
 
-    if ($licenseId !== null) {
-        $stmt = $pdo->prepare("SELECT lizenztyp FROM {$licenseTable} WHERE id = :id");
-        $stmt->execute(['id' => $licenseId]);
-        $type = $stmt->fetchColumn();
-        if ($type === false) {
-            echo json_encode(['success' => false, 'message' => 'Lizenz wurde nicht gefunden.']);
-            return;
-        }
-        if ($type !== 'Boot') {
-            echo json_encode(['success' => false, 'message' => 'Die ausgewählte Lizenz ist keine Bootslizenz.']);
+    if ($licenseeId !== null) {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM lizenznehmer WHERE id = :id');
+        $stmt->execute(['id' => $licenseeId]);
+        if (!$stmt->fetchColumn()) {
+            echo json_encode(['success' => false, 'message' => 'Lizenznehmer wurde nicht gefunden.']);
             return;
         }
     }
 
     $pdo->beginTransaction();
     try {
-        if ($licenseId !== null) {
-            $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenz_id = NULL WHERE lizenz_id = :license_id AND id <> :boat_id");
+        if ($licenseeId !== null) {
+            $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenznehmer_id = NULL WHERE lizenznehmer_id = :licensee_id AND id <> :boat_id");
             $stmt->execute([
-                'license_id' => $licenseId,
+                'licensee_id' => $licenseeId,
                 'boat_id' => $boatId,
             ]);
         }
 
-        $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenz_id = :license_id WHERE id = :boat_id");
+        $stmt = $pdo->prepare("UPDATE {$boatTable} SET lizenznehmer_id = :licensee_id WHERE id = :boat_id");
         $stmt->execute([
-            'license_id' => $licenseId,
+            'licensee_id' => $licenseeId,
             'boat_id' => $boatId,
         ]);
 
@@ -404,14 +392,12 @@ function move_license(): void
     }
 
     $fromTable = license_table($fromYear);
-    $fromBoatTable = boat_table($fromYear);
     $toTable = license_table($toYear);
-    $toBoatTable = boat_table($toYear);
     ensure_year_exists($toYear);
 
     $pdo = get_pdo();
 
-    $stmt = $pdo->prepare("SELECT l.*, b.bootnummer, b.notizen AS boot_notizen FROM {$fromTable} l LEFT JOIN {$fromBoatTable} b ON b.lizenz_id = l.id WHERE l.id = :id");
+    $stmt = $pdo->prepare("SELECT * FROM {$fromTable} WHERE id = :id");
     $stmt->execute(['id' => $licenseId]);
     $row = $stmt->fetch();
     if (!$row) {
@@ -435,14 +421,6 @@ function move_license(): void
         ]);
         $newLicenseId = (int)$pdo->lastInsertId();
 
-        if ($row['lizenztyp'] === 'Boot') {
-            $stmt = $pdo->prepare("INSERT INTO {$toBoatTable} (lizenz_id, bootnummer, notizen) VALUES (:id, :nummer, :notizen)");
-            $stmt->execute([
-                'id' => $newLicenseId,
-                'nummer' => $row['bootnummer'],
-                'notizen' => $row['boot_notizen'],
-            ]);
-        }
         $pdo->commit();
         echo json_encode(['success' => true]);
     } catch (Throwable $e) {

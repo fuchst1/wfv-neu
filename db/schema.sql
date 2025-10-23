@@ -60,7 +60,6 @@ ON DUPLICATE KEY UPDATE ort = VALUES(ort);
 SET @jahr := YEAR(CURDATE());
 
 SET @licenseTable := CONCAT('lizenzen_', @jahr);
-SET @boatTable := CONCAT('boote_', @jahr);
 
 SET @sql := CONCAT('CREATE TABLE IF NOT EXISTS ', @licenseTable, ' (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -78,17 +77,6 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
-SET @sql := CONCAT('CREATE TABLE IF NOT EXISTS ', @boatTable, ' (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    lizenz_id INT,
-    bootnummer VARCHAR(50),
-    notizen TEXT,
-    FOREIGN KEY (lizenz_id) REFERENCES ', @licenseTable, '(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
 INSERT INTO lizenzpreise (jahr, lizenztyp, preis) VALUES
     (@jahr, 'Angel', 60.00),
     (@jahr, 'Daubel', 45.00),
@@ -96,3 +84,14 @@ INSERT INTO lizenzpreise (jahr, lizenztyp, preis) VALUES
     (@jahr, 'Kinder', 15.00),
     (@jahr, 'Jugend', 25.00)
 ON DUPLICATE KEY UPDATE preis = VALUES(preis);
+
+CREATE TABLE IF NOT EXISTS boote (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    lizenznehmer_id INT NULL,
+    bootnummer VARCHAR(50),
+    notizen TEXT,
+    erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_boote_lizenznehmer FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id) ON DELETE SET NULL,
+    INDEX idx_boote_lizenznehmer (lizenznehmer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

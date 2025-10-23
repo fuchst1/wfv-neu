@@ -13,20 +13,18 @@
 
     const fields = {
         id: document.getElementById('boatId'),
-        year: document.getElementById('boatYear'),
         number: document.getElementById('boatNumber'),
         boatNotes: document.getElementById('boatNotes'),
     };
 
     const assignFields = {
         boatId: document.getElementById('assignBoatId'),
-        boatYear: document.getElementById('assignBoatYear'),
         select: document.getElementById('assignLicenseSelect'),
         info: document.getElementById('assignBoatInfo'),
         hint: document.getElementById('assignLicenseHint'),
     };
 
-    const licenseCache = new Map();
+    let licenseCache = null;
 
     Validation.attach(form);
 
@@ -41,10 +39,8 @@
         }
 
         const isEdit = Boolean(fields.id.value);
-        const year = parseInt(fields.year.value || CURRENT_YEAR, 10);
         const action = isEdit ? 'update_boat' : 'save_boat';
         const payload = {
-            year,
             boat: {
                 id: fields.id.value ? parseInt(fields.id.value, 10) : undefined,
                 bootnummer: fields.number.value,
@@ -85,18 +81,16 @@
 
         assignForm.addEventListener('submit', event => {
             event.preventDefault();
-            const year = parseInt(assignFields.boatYear.value, 10);
             const boatId = parseInt(assignFields.boatId.value, 10);
-            if (!year || !boatId) {
+            if (!boatId) {
                 alert('Boot konnte nicht zugewiesen werden.');
                 return;
             }
 
-            const licenseId = assignFields.select.value ? parseInt(assignFields.select.value, 10) : null;
+            const licenseeId = assignFields.select.value ? parseInt(assignFields.select.value, 10) : null;
             const payload = {
-                year,
                 boat_id: boatId,
-                license_id: licenseId,
+                licensee_id: licenseeId,
             };
 
             fetch('api.php?action=assign_boat_license', {
@@ -109,10 +103,10 @@
                     if (result.success) {
                         window.location.reload();
                     } else {
-                        alert(result.message || 'Lizenz konnte nicht zugewiesen werden.');
+                        alert(result.message || 'Lizenznehmer konnte nicht zugewiesen werden.');
                     }
                 })
-                .catch(() => alert('Lizenz konnte nicht zugewiesen werden.'));
+                .catch(() => alert('Lizenznehmer konnte nicht zugewiesen werden.'));
         });
     }
 
@@ -146,7 +140,6 @@
 
     function openCreateModal() {
         resetForm();
-        fields.year.value = String(CURRENT_YEAR);
         fields.id.value = '';
         if (modalTitle) {
             modalTitle.textContent = 'Boot hinzufügen';
@@ -158,7 +151,6 @@
     function openEditModal(boat) {
         resetForm();
         fields.id.value = boat.id || '';
-        fields.year.value = String(boat.jahr || CURRENT_YEAR);
         fields.number.value = boat.bootnummer || '';
         fields.boatNotes.value = boat.notizen || '';
         if (modalTitle) {
@@ -175,7 +167,6 @@
         }
 
         const payload = {
-            year: boat.jahr,
             boat_id: boat.id,
         };
 
@@ -201,7 +192,6 @@
         }
 
         assignFields.boatId.value = boat.id || '';
-        assignFields.boatYear.value = boat.jahr || '';
         assignFields.info.textContent = boat.bootnummer ? `Boot ${boat.bootnummer}` : 'Boot';
         assignFields.hint.textContent = '';
         assignFields.select.disabled = true;
@@ -209,55 +199,54 @@
 
         assignModal.hidden = false;
 
-        const year = boat.jahr;
-        loadLicenses(year)
-            .then(licenses => {
+        loadLicensees()
+            .then(licensees => {
                 assignFields.select.disabled = false;
                 assignFields.select.innerHTML = '<option value="">Kein Lizenznehmer</option>';
                 let selectedSet = false;
-                licenses.forEach(license => {
+                licensees.forEach(licensee => {
                     const option = document.createElement('option');
-                    option.value = String(license.id);
-                    const labelParts = [`${license.nachname}, ${license.vorname}`, `#${license.id}`];
-                    if (license.bootnummer) {
-                        labelParts.push(`Boot ${license.bootnummer}`);
+                    option.value = String(licensee.id);
+                    const labelParts = [`${licensee.nachname}, ${licensee.vorname}`, `#${licensee.id}`];
+                    if (licensee.bootnummer) {
+                        labelParts.push(`Boot ${licensee.bootnummer}`);
                     }
                     option.textContent = labelParts.join(' · ');
-                    if (license.boat_id && license.boat_id !== boat.id) {
+                    if (licensee.boat_id && licensee.boat_id !== boat.id) {
                         option.disabled = true;
                         option.textContent += ' (bereits vergeben)';
                     }
-                    if (!selectedSet && boat.lizenz_id && license.id === boat.lizenz_id) {
+                    if (!selectedSet && boat.lizenznehmer && licensee.id === boat.lizenznehmer.id) {
                         option.selected = true;
                         selectedSet = true;
                     }
                     assignFields.select.appendChild(option);
                 });
 
-                if (!selectedSet && boat.lizenz_id) {
-                    assignFields.hint.textContent = 'Die zugewiesene Lizenz wurde nicht gefunden.';
+                if (!selectedSet && boat.lizenznehmer && boat.lizenznehmer.id) {
+                    assignFields.hint.textContent = 'Der zugewiesene Lizenznehmer wurde nicht gefunden.';
                 }
 
                 assignFields.select.focus();
             })
             .catch(() => {
                 assignFields.select.disabled = false;
-                assignFields.hint.textContent = 'Lizenzen konnten nicht geladen werden.';
+                assignFields.hint.textContent = 'Lizenznehmer konnten nicht geladen werden.';
             });
     }
 
-    function loadLicenses(year) {
-        if (licenseCache.has(year)) {
-            return Promise.resolve(licenseCache.get(year));
+    function loadLicensees() {
+        if (licenseCache) {
+            return Promise.resolve(licenseCache);
         }
-        return fetch(`api.php?action=get_boat_licenses&year=${encodeURIComponent(year)}`)
+        return fetch('api.php?action=get_boat_licenses')
             .then(r => r.json())
             .then(result => {
                 if (!result.success) {
                     throw new Error('Request failed');
                 }
-                licenseCache.set(year, result.licenses || []);
-                return result.licenses || [];
+                licenseCache = result.licensees || [];
+                return licenseCache;
             });
     }
 
