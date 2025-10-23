@@ -205,7 +205,7 @@
         assignFields.date.value = getTodayDateString();
         assignFields.notes.value = applicant.notizen || '';
 
-        assignModal.hidden = false;
+        showModal(assignModal);
         assignFields.type.dispatchEvent(new Event('change'));
         assignFields.year.dispatchEvent(new Event('change'));
     }
@@ -215,7 +215,7 @@
         addForm.reset();
         clearValidation(addForm);
         addFields.date.value = getTodayDateString();
-        addModal.hidden = false;
+        showModal(addModal);
         addFields.firstName.focus();
         editingApplicantId = null;
         editingRow = null;
@@ -229,7 +229,7 @@
 
     function hideModal(modal) {
         if (!modal) return;
-        modal.hidden = true;
+        hideElement(modal);
         if (modal === assignModal) {
             currentApplicant = null;
             currentRow = null;
@@ -269,8 +269,20 @@
             addSubmitButton.textContent = 'Aktualisieren';
         }
 
-        addModal.hidden = false;
+        showModal(addModal);
         addFields.firstName.focus();
+    }
+
+    function showModal(modal) {
+        if (!modal) return;
+        modal.removeAttribute('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideElement(modal) {
+        if (!modal) return;
+        modal.setAttribute('hidden', '');
+        modal.setAttribute('aria-hidden', 'true');
     }
 
     function updateTotal() {
