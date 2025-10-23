@@ -2,9 +2,6 @@
 require_once __DIR__ . '/lib/functions.php';
 
 $boats = get_boats_overview();
-$latestYear = latest_year();
-$currentYear = $latestYear ?: (int)date('Y');
-ensure_year_exists($currentYear);
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -63,7 +60,7 @@ ensure_year_exists($currentYear);
                     <?php
                         $boatData = [
                             'id' => $boat['boot_id'] !== null ? (int)$boat['boot_id'] : null,
-                            'jahr' => (int)$boat['jahr'],
+                            'jahr' => isset($boat['jahr']) ? (int)$boat['jahr'] : null,
                             'bootnummer' => $boat['bootnummer'],
                             'notizen' => $boat['boot_notizen'],
                             'lizenz_id' => $boat['lizenz_id'] !== null ? (int)$boat['lizenz_id'] : null,
@@ -116,7 +113,6 @@ ensure_year_exists($currentYear);
         </header>
         <form id="addBoatForm">
             <input type="hidden" id="boatId">
-            <input type="hidden" id="boatYear">
             <section class="form-section">
                 <label>Bootsnummer
                     <input type="text" id="boatNumber" data-validate="required" required>
@@ -141,10 +137,9 @@ ensure_year_exists($currentYear);
         </header>
         <form id="assignLicenseForm">
             <input type="hidden" id="assignBoatId">
-            <input type="hidden" id="assignBoatYear">
             <section class="form-section">
                 <p id="assignBoatInfo"></p>
-                <label for="assignLicenseSelect">Lizenz wählen</label>
+                <label for="assignLicenseSelect">Lizenznehmer wählen</label>
                 <select id="assignLicenseSelect">
                     <option value="">Kein Lizenznehmer</option>
                 </select>
@@ -158,7 +153,6 @@ ensure_year_exists($currentYear);
     </div>
 </div>
 
-<script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>;</script>
 <script src="assets/js/validation.js"></script>
 <script src="assets/js/table-search.js"></script>
 <script src="assets/js/boats.js"></script>

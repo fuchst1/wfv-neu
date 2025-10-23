@@ -25,16 +25,32 @@ function license_table(int $year): string
     return 'lizenzen_' . $year;
 }
 
-function boat_table(int $year): string
+function boats_table(): string
 {
-    return 'boote_' . $year;
+    return 'boote';
+}
+
+function ensure_boats_table_exists(): void
+{
+    $pdo = get_pdo();
+    $boatsTable = boats_table();
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS {$boatsTable} (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        lizenznehmer_id INT NULL,
+        bootnummer VARCHAR(50),
+        notizen TEXT,
+        erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_boote_lizenznehmer FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id) ON DELETE SET NULL,
+        INDEX idx_boote_lizenznehmer (lizenznehmer_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
 function ensure_year_exists(int $year): bool
 {
     $pdo = get_pdo();
     $licenseTable = license_table($year);
-    $boatTable = boat_table($year);
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS {$licenseTable} (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -49,13 +65,7 @@ function ensure_year_exists(int $year): bool
         FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    $pdo->exec("CREATE TABLE IF NOT EXISTS {$boatTable} (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        lizenz_id INT,
-        bootnummer VARCHAR(50),
-        notizen TEXT,
-        FOREIGN KEY (lizenz_id) REFERENCES {$licenseTable}(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    ensure_boats_table_exists();
 
     return true;
 }
@@ -91,15 +101,18 @@ function get_licensees_for_year(int $year): array
 {
     $pdo = get_pdo();
     $licenseTable = license_table($year);
-    $boatTable = boat_table($year);
 
     ensure_year_exists($year);
+    ensure_boats_table_exists();
+    $boatsTable = boats_table();
 
     $sql = "SELECT l.id AS lizenz_id, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
-                ln.*, b.bootnummer, b.notizen AS boot_notizen
+                ln.*, 
+                (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boot_id,
+                (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer,
+                (SELECT b2.notizen FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boot_notizen
             FROM {$licenseTable} l
             JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
-            LEFT JOIN {$boatTable} b ON b.lizenz_id = l.id
             ORDER BY ln.nachname, ln.vorname";
     $stmt = $pdo->query($sql);
     return $stmt->fetchAll();
@@ -108,28 +121,52 @@ function get_licensees_for_year(int $year): array
 function get_boats_overview(): array
 {
     $pdo = get_pdo();
-    $boats = [];
+    ensure_boats_table_exists();
+    $boatsTable = boats_table();
 
-    foreach (available_years() as $year) {
-        ensure_year_exists($year);
+    $sql = "SELECT b.id AS boot_id, b.bootnummer, b.notizen AS boot_notizen, b.lizenznehmer_id,
+                   ln.vorname, ln.nachname, ln.telefon, ln.email
+            FROM {$boatsTable} b
+            LEFT JOIN lizenznehmer ln ON ln.id = b.lizenznehmer_id
+            ORDER BY b.bootnummer, ln.nachname, ln.vorname";
+
+    $boats = $pdo->query($sql)->fetchAll();
+
+    $assignments = [];
+    $years = available_years();
+    rsort($years);
+
+    foreach ($years as $year) {
         $licenseTable = license_table($year);
-        $boatTable = boat_table($year);
-
-        $sql = "SELECT :jahr AS jahr, b.id AS boot_id, b.bootnummer, b.notizen AS boot_notizen, l.id AS lizenz_id, l.notizen AS lizenz_notizen, l.zahlungsdatum, ln.id AS lizenznehmer_id, ln.vorname, ln.nachname, ln.telefon, ln.email
-                FROM {$boatTable} b
-                LEFT JOIN {$licenseTable} l ON l.id = b.lizenz_id
-                LEFT JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
-                ORDER BY b.bootnummer, ln.nachname, ln.vorname";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['jahr' => $year]);
-        $rows = $stmt->fetchAll();
-
-        foreach ($rows as $row) {
-            $row['jahr'] = (int)$row['jahr'];
-            $boats[] = $row;
+        $stmt = $pdo->query("SELECT lizenznehmer_id, id, notizen, zahlungsdatum FROM {$licenseTable} WHERE lizenztyp = 'Boot'");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $licenseeId = (int)$row['lizenznehmer_id'];
+            if (!isset($assignments[$licenseeId])) {
+                $assignments[$licenseeId] = [
+                    'jahr' => $year,
+                    'lizenz_id' => (int)$row['id'],
+                    'lizenz_notizen' => $row['notizen'] ?? null,
+                    'zahlungsdatum' => $row['zahlungsdatum'] ?? null,
+                ];
+            }
         }
     }
+
+    foreach ($boats as &$boat) {
+        $boat['jahr'] = null;
+        $boat['lizenz_id'] = null;
+        $boat['lizenz_notizen'] = null;
+        $boat['zahlungsdatum'] = null;
+
+        $licenseeId = $boat['lizenznehmer_id'] !== null ? (int)$boat['lizenznehmer_id'] : null;
+        if ($licenseeId !== null && isset($assignments[$licenseeId])) {
+            $boat['jahr'] = $assignments[$licenseeId]['jahr'];
+            $boat['lizenz_id'] = $assignments[$licenseeId]['lizenz_id'];
+            $boat['lizenz_notizen'] = $assignments[$licenseeId]['lizenz_notizen'];
+            $boat['zahlungsdatum'] = $assignments[$licenseeId]['zahlungsdatum'];
+        }
+    }
+    unset($boat);
 
     usort($boats, function (array $a, array $b): int {
         $numberCompare = strnatcmp((string)($a['bootnummer'] ?? ''), (string)($b['bootnummer'] ?? ''));

@@ -4,7 +4,7 @@ Diese Anwendung ermöglicht die Verwaltung der Jahreslizenzen des Wörderner Fis
 
 ## Funktionen
 
-- Jahresnavigation mit automatischem Anlegen neuer Jahres-Tabellen (`lizenzen_YYYY`, `boote_YYYY`).
+- Jahresnavigation mit automatischem Anlegen neuer Lizenz-Tabellen (`lizenzen_YYYY`) und zentraler Bootsliste.
 - Übersicht aller Lizenzen des ausgewählten Jahres inklusive Stammdaten.
 - CRUD über Modals für Lizenznehmer, Lizenz, Bootsdaten.
 - Verlängerung in ein neues Jahr inkl. automatischer Preisauswahl und Datenübernahme.
