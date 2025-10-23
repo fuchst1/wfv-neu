@@ -10,6 +10,11 @@ const Validation = (() => {
         zip(value) {
             if (!value) return true;
             return /^\d{4,5}$/.test(value.trim());
+        },
+        phone(value) {
+            if (!value) return true;
+            const trimmed = value.trim();
+            return /^\+?\d+$/.test(trimmed);
         }
     };
 

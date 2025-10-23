@@ -197,7 +197,7 @@ $yearOverview = get_year_overview($currentYear);
                         <input type="text" id="ort" data-validate="required" required>
                     </label>
                     <label>Telefon
-                        <input type="text" id="telefon">
+                        <input type="text" id="telefon" data-validate="phone">
                     </label>
                     <label>E-Mail
                         <input type="email" id="email" data-validate="email">
