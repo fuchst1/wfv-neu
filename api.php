@@ -705,6 +705,8 @@ function create_newcomer(): void
         return;
     }
 
+    $force = !empty($data['force']);
+
     $firstName = trim((string)($data['vorname'] ?? ''));
     $lastName = trim((string)($data['nachname'] ?? ''));
     if ($firstName === '' || $lastName === '') {
@@ -734,7 +736,7 @@ function create_newcomer(): void
     }
 
     $blockedEntry = find_blocklist_entry($firstName, $lastName, $card);
-    if ($blockedEntry) {
+    if ($blockedEntry && !$force) {
         echo json_encode([
             'success' => false,
             'blocked' => true,
@@ -775,6 +777,8 @@ function update_newcomer(): void
         return;
     }
 
+    $force = !empty($data['force']);
+
     $id = isset($data['id']) ? (int)$data['id'] : 0;
     if ($id <= 0) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Neuwerber-ID.']);
@@ -812,7 +816,7 @@ function update_newcomer(): void
     }
 
     $blockedEntry = find_blocklist_entry($firstName, $lastName, $card);
-    if ($blockedEntry) {
+    if ($blockedEntry && !$force) {
         echo json_encode([
             'success' => false,
             'blocked' => true,
