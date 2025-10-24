@@ -42,6 +42,8 @@
     };
 
     const createYearForm = document.getElementById('createYearForm');
+    const createYearButton = document.getElementById('openCreateYear');
+    const createYearPriceInputs = createYearForm ? Array.from(createYearForm.querySelectorAll('.price-input')) : [];
 
     let currentRow = null;
     let currentLicense = null;
@@ -82,9 +84,12 @@
         openLicenseModal(null);
     });
 
-    document.getElementById('openCreateYear').addEventListener('click', () => {
-        createYearModal.hidden = false;
-    });
+    if (createYearButton) {
+        createYearButton.addEventListener('click', () => {
+            prefillCreateYearForm();
+            createYearModal.hidden = false;
+        });
+    }
 
     document.querySelectorAll('tbody tr[data-license]').forEach(row => {
         const data = JSON.parse(row.dataset.license);
@@ -343,6 +348,25 @@
         } else {
             licenseFields.boatDetails.removeAttribute('open');
         }
+    }
+
+    function prefillCreateYearForm() {
+        if (!createYearForm) return;
+        createYearForm.reset();
+        if (!Array.isArray(createYearPriceInputs) || createYearPriceInputs.length === 0) {
+            return;
+        }
+        createYearPriceInputs.forEach(input => {
+            const type = input.dataset.type;
+            if (type && LICENSE_PRICES && Object.prototype.hasOwnProperty.call(LICENSE_PRICES, type)) {
+                const value = Number(LICENSE_PRICES[type]);
+                if (!Number.isNaN(value)) {
+                    input.value = value.toFixed(2);
+                    return;
+                }
+            }
+            input.value = '';
+        });
     }
 
     function getTodayDateString() {
