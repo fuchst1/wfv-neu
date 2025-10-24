@@ -601,6 +601,21 @@ function assign_newcomer(): void
         return;
     }
 
+    $blockedEntry = find_blocklist_entry(
+        (string)($applicant['vorname'] ?? ''),
+        (string)($applicant['nachname'] ?? ''),
+        isset($applicant['fischerkartennummer']) && $applicant['fischerkartennummer'] !== '' ? (string)$applicant['fischerkartennummer'] : null
+    );
+    if ($blockedEntry) {
+        echo json_encode([
+            'success' => false,
+            'blocked' => true,
+            'entry' => $blockedEntry,
+            'message' => 'Die Person steht auf der Sperrliste.'
+        ]);
+        return;
+    }
+
     ensure_year_exists($year);
     $licenseTable = license_table($year);
 
@@ -661,8 +676,10 @@ function create_newcomer(): void
     $zip = trim((string)($data['plz'] ?? '')) ?: null;
     $city = trim((string)($data['ort'] ?? '')) ?: null;
     $phone = trim((string)($data['telefon'] ?? '')) ?: null;
-    $email = trim((string)($data['email'] ?? '')) ?: null;
-    $card = trim((string)($data['fischerkartennummer'] ?? '')) ?: null;
+    $emailRaw = trim((string)($data['email'] ?? ''));
+    $email = $emailRaw !== '' ? $emailRaw : null;
+    $cardRaw = trim((string)($data['fischerkartennummer'] ?? ''));
+    $card = $cardRaw !== '' ? $cardRaw : null;
     $date = trim((string)($data['bewerbungsdatum'] ?? '')) ?: null;
     $notes = trim((string)($data['notizen'] ?? '')) ?: null;
 
@@ -673,6 +690,17 @@ function create_newcomer(): void
 
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo json_encode(['success' => false, 'message' => 'Ungültige E-Mail-Adresse.']);
+        return;
+    }
+
+    $blockedEntry = find_blocklist_entry($firstName, $lastName, $card);
+    if ($blockedEntry) {
+        echo json_encode([
+            'success' => false,
+            'blocked' => true,
+            'entry' => $blockedEntry,
+            'message' => 'Die Person steht auf der Sperrliste.'
+        ]);
         return;
     }
 
@@ -726,7 +754,8 @@ function update_newcomer(): void
     $phone = trim((string)($data['telefon'] ?? '')) ?: null;
     $emailRaw = trim((string)($data['email'] ?? ''));
     $email = $emailRaw !== '' ? $emailRaw : null;
-    $card = trim((string)($data['fischerkartennummer'] ?? '')) ?: null;
+    $cardRaw = trim((string)($data['fischerkartennummer'] ?? ''));
+    $card = $cardRaw !== '' ? $cardRaw : null;
     $dateRaw = trim((string)($data['bewerbungsdatum'] ?? ''));
     $date = $dateRaw !== '' ? $dateRaw : null;
     $notesRaw = trim((string)($data['notizen'] ?? ''));
@@ -739,6 +768,17 @@ function update_newcomer(): void
 
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo json_encode(['success' => false, 'message' => 'Ungültige E-Mail-Adresse.']);
+        return;
+    }
+
+    $blockedEntry = find_blocklist_entry($firstName, $lastName, $card);
+    if ($blockedEntry) {
+        echo json_encode([
+            'success' => false,
+            'blocked' => true,
+            'entry' => $blockedEntry,
+            'message' => 'Die Person steht auf der Sperrliste.'
+        ]);
         return;
     }
 
