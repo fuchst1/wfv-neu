@@ -281,6 +281,16 @@ $yearOverview = get_year_overview($currentYear);
                             <?php endforeach; ?>
                         </select>
                     </label>
+                    <label>Lizenztyp
+                        <select id="extendType" data-validate="required" required>
+                            <option value="">– bitte wählen –</option>
+                            <option value="Angel">Angel</option>
+                            <option value="Daubel">Daubel</option>
+                            <option value="Boot">Boot</option>
+                            <option value="Kinder">Kinder</option>
+                            <option value="Jugend">Jugend</option>
+                        </select>
+                    </label>
                     <?php if (!$extendYears): ?>
                         <p class="form-hint">Kein weiteres Jahr vorhanden. Neues Jahr im Adminbereich anlegen.</p>
                     <?php endif; ?>
