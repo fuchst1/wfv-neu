@@ -41,6 +41,8 @@
         notes: document.getElementById('extendNotes'),
     };
 
+    const extendSubmitButton = extendModal ? extendModal.querySelector('button[type="submit"]') : null;
+
     const createYearForm = document.getElementById('createYearForm');
     const createYearButton = document.getElementById('openCreateYear');
     const createYearPriceInputs = createYearForm ? Array.from(createYearForm.querySelectorAll('.price-input')) : [];
@@ -299,14 +301,44 @@
     function openExtendModal(data, row) {
         currentRow = row;
         currentLicense = data;
-        extendFields.year.value = CURRENT_YEAR + 1;
-        extendFields.cost.value = data.kosten;
-        extendFields.tip.value = 0;
-        extendFields.total.value = (parseFloat(extendFields.cost.value || 0) + parseFloat(extendFields.tip.value || 0)).toFixed(2);
+        const yearField = extendFields.year;
+        const optionElements = yearField ? Array.from(yearField.options).filter(option => option.value) : [];
+        let defaultYear = '';
+        if (optionElements.length) {
+            const targetYear = CURRENT_YEAR + 1;
+            const exactMatch = optionElements.find(option => parseInt(option.value, 10) === targetYear);
+            if (exactMatch) {
+                defaultYear = exactMatch.value;
+            } else {
+                const futureYear = optionElements.find(option => parseInt(option.value, 10) > CURRENT_YEAR);
+                if (futureYear) {
+                    defaultYear = futureYear.value;
+                } else {
+                    defaultYear = optionElements[0].value;
+                }
+            }
+        }
+        if (yearField) {
+            yearField.disabled = optionElements.length === 0;
+            yearField.value = defaultYear;
+        }
+        if (extendSubmitButton) {
+            extendSubmitButton.disabled = optionElements.length === 0;
+        }
+        const baseCost = parseFloat(data.kosten);
+        extendFields.cost.value = Number.isFinite(baseCost) ? baseCost.toFixed(2) : Number(0).toFixed(2);
+        extendFields.tip.value = Number(0).toFixed(2);
+        updateExtendTotal();
         extendFields.date.value = '';
         extendFields.notes.value = '';
         if (extendModal) {
             extendModal.hidden = false;
+        }
+        if (defaultYear && yearField) {
+            yearField.dispatchEvent(new Event('change'));
+        }
+        if (!optionElements.length) {
+            alert('Kein Zieljahr vorhanden. Bitte neues Jahr im Adminbereich anlegen.');
         }
     }
 

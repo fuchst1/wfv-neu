@@ -267,9 +267,23 @@ $yearOverview = get_year_overview($currentYear);
         <form id="extendForm">
             <section class="form-section">
                 <div class="form-grid">
+                    <?php
+                        $extendYears = array_filter($years, function ($year) use ($currentYear) {
+                            return (int)$year !== (int)$currentYear;
+                        });
+                        rsort($extendYears);
+                    ?>
                     <label>Neues Jahr
-                        <input type="number" id="extendYear" min="2000" data-validate="required" required>
+                        <select id="extendYear" data-validate="required" required <?= $extendYears ? '' : 'disabled' ?>>
+                            <option value="">– bitte wählen –</option>
+                            <?php foreach ($extendYears as $yearOption): ?>
+                                <option value="<?= (int)$yearOption ?>"><?= (int)$yearOption ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
+                    <?php if (!$extendYears): ?>
+                        <p class="form-hint">Kein weiteres Jahr vorhanden. Neues Jahr im Adminbereich anlegen.</p>
+                    <?php endif; ?>
                     <label>Kosten (€)
                         <input type="number" id="extendCost" step="0.01" min="0" data-validate="required" required>
                     </label>
