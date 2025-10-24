@@ -108,8 +108,8 @@ $boats = get_boats_overview();
                             <?php endif; ?>
                         </td>
                         <td class="actions">
+                            <button type="button" class="primary assign">Lizenznehmer zuweisen</button>
                             <button type="button" class="secondary edit">Bearbeiten</button>
-                            <button type="button" class="secondary assign">Lizenznehmer zuweisen</button>
                             <button type="button" class="danger delete">Löschen</button>
                         </td>
                     </tr>

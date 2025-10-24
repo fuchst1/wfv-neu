@@ -102,8 +102,8 @@ $yearOverview = get_year_overview($currentYear);
                                 <?php endif; ?>
                             </td>
                             <td class="actions">
+                                <button class="primary extend">Verlängern</button>
                                 <button class="secondary edit">Bearbeiten</button>
-                                <button class="secondary extend">Verlängern</button>
                                 <button class="danger delete">Löschen</button>
                             </td>
                         </tr>
