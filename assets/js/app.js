@@ -174,28 +174,6 @@
         });
     }
 
-    const licenseeSelect = document.getElementById('licenseeSelect');
-    if (licenseeSelect) {
-        licenseeSelect.addEventListener('change', event => {
-            const option = event.target.selectedOptions[0];
-            if (!option) return;
-            if (!option.value) {
-                resetLicenseeFields();
-                licenseFields.licenseeId.value = '';
-                return;
-            }
-            licenseFields.licenseeId.value = option.value;
-            licenseFields.firstName.value = option.dataset.vorname || '';
-            licenseFields.lastName.value = option.dataset.nachname || '';
-            licenseFields.street.value = option.dataset.strasse || '';
-            licenseFields.zip.value = option.dataset.plz || '';
-            licenseFields.city.value = option.dataset.ort || '';
-            licenseFields.phone.value = option.dataset.telefon || '';
-            licenseFields.email.value = option.dataset.email || '';
-            licenseFields.card.value = option.dataset.karte || '';
-        });
-    }
-
     if (licenseFields.zip) {
         licenseFields.zip.addEventListener('blur', event => {
             const value = event.target.value.trim();
@@ -338,17 +316,6 @@
         toggleBoat(false);
         document.querySelectorAll('.validation-hint').forEach(h => h.textContent = '');
         document.querySelectorAll('.validation-error').forEach(el => el.classList.remove('validation-error'));
-    }
-
-    function resetLicenseeFields() {
-        licenseFields.firstName.value = '';
-        licenseFields.lastName.value = '';
-        licenseFields.street.value = '';
-        licenseFields.zip.value = '';
-        licenseFields.city.value = '';
-        licenseFields.phone.value = '';
-        licenseFields.email.value = '';
-        licenseFields.card.value = '';
     }
 
     function fillLicenseForm(data) {

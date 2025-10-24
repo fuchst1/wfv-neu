@@ -164,22 +164,6 @@ $yearOverview = get_year_overview($currentYear);
             <input type="hidden" name="licensee[id]" id="licenseeId">
             <section class="form-section">
                 <h3>Lizenznehmer</h3>
-                <label for="licenseeSelect">Bestehenden Lizenznehmer wählen</label>
-                <select id="licenseeSelect">
-                    <option value="">Neuer Lizenznehmer</option>
-                    <?php foreach ($allLicensees as $licensee): ?>
-                        <option value="<?= $licensee['id'] ?>"
-                            data-vorname="<?= htmlspecialchars($licensee['vorname']) ?>"
-                            data-nachname="<?= htmlspecialchars($licensee['nachname']) ?>"
-                            data-strasse="<?= htmlspecialchars($licensee['strasse'] ?? '') ?>"
-                            data-plz="<?= htmlspecialchars($licensee['plz'] ?? '') ?>"
-                            data-ort="<?= htmlspecialchars($licensee['ort'] ?? '') ?>"
-                            data-telefon="<?= htmlspecialchars($licensee['telefon'] ?? '') ?>"
-                            data-email="<?= htmlspecialchars($licensee['email'] ?? '') ?>"
-                            data-karte="<?= htmlspecialchars($licensee['fischerkartennummer'] ?? '') ?>"
-                        ><?= htmlspecialchars($licensee['nachname'] . ', ' . $licensee['vorname']) ?></option>
-                    <?php endforeach; ?>
-                </select>
                 <div class="form-grid">
                     <label>
                         <span class="label-title">Vorname <span class="required-indicator" aria-hidden="true">*</span></span>
