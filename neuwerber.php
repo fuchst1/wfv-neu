@@ -107,19 +107,24 @@ $prices = get_license_prices($currentYear);
         <form id="newApplicantForm">
             <section class="form-section">
                 <div class="form-grid">
-                    <label>Vorname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Vorname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantFirstName" data-validate="required" required>
                     </label>
-                    <label>Nachname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Nachname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantLastName" data-validate="required" required>
                     </label>
-                    <label>Straße <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Straße <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantStreet" data-validate="required" required>
                     </label>
-                    <label>PLZ <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">PLZ <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantZip" data-validate="required,zip" required>
                     </label>
-                    <label>Ort <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Ort <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantCity" data-validate="required" required>
                     </label>
                     <label>Telefon
@@ -128,7 +133,8 @@ $prices = get_license_prices($currentYear);
                     <label>E-Mail
                         <input type="email" id="applicantEmail" data-validate="email">
                     </label>
-                    <label>Fischerkartennummer <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Fischerkartennummer <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="applicantCard" data-validate="required" required>
                     </label>
                 </div>

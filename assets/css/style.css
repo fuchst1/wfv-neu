@@ -366,6 +366,16 @@ label {
     gap: 0.25rem;
 }
 
+.label-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.required-indicator {
+    color: var(--danger);
+}
+
 input, select, textarea {
     padding: 0.5rem;
     border-radius: 0.5rem;
