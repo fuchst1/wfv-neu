@@ -15,6 +15,16 @@
     const cancelBlockWarning = document.getElementById('cancelAssignBlockWarning');
     const closeBlockWarningButton = document.getElementById('closeAssignBlockWarning');
 
+    const AGE_RULES = {
+        Kinder: { min: 10, max: 14 },
+        Jugend: { min: 14, max: 18 },
+    };
+
+    const LICENSE_TYPE_LABELS = {
+        Kinder: 'Kinderlizenz',
+        Jugend: 'Jugendlizenz',
+    };
+
     if (!assignModal || !assignForm) {
         return;
     }
@@ -27,6 +37,8 @@
         total: document.getElementById('assignTotal'),
         date: document.getElementById('assignDate'),
         notes: document.getElementById('assignNotes'),
+        ageHint: document.getElementById('assignAgeHint'),
+        ageWarning: document.getElementById('assignAgeWarning'),
     };
 
     const addFields = addForm ? {
@@ -37,6 +49,8 @@
         city: document.getElementById('applicantCity'),
         phone: document.getElementById('applicantPhone'),
         email: document.getElementById('applicantEmail'),
+        birthdate: document.getElementById('applicantBirthdate'),
+        ageHint: document.getElementById('applicantAgeHint'),
         card: document.getElementById('applicantCard'),
         date: document.getElementById('applicantDate'),
         notes: document.getElementById('applicantNotes'),
@@ -116,6 +130,13 @@
                     }
                 });
         });
+        if (addFields.birthdate) {
+            ['input', 'change'].forEach(eventName => {
+                addFields.birthdate.addEventListener(eventName, () => {
+                    updateApplicantAgeHint();
+                });
+            });
+        }
         addForm.addEventListener('submit', event => {
             event.preventDefault();
             if (!Validation.validateInput(addFields.firstName) || !Validation.validateInput(addFields.lastName)) {
@@ -131,6 +152,7 @@
                 ort: addFields.city.value,
                 telefon: addFields.phone.value,
                 email: addFields.email.value,
+                geburtsdatum: addFields.birthdate ? addFields.birthdate.value : '',
                 fischerkartennummer: addFields.card.value,
                 bewerbungsdatum: addFields.date.value,
                 notizen: addFields.notes.value,
@@ -158,6 +180,7 @@
             assignFields.cost.value = Number(prices[type]).toFixed(2);
         }
         updateTotal();
+        updateAssignAgeInfo();
     });
 
     assignFields.year.addEventListener('change', event => {
@@ -165,6 +188,7 @@
         if (!year) return;
         if (priceCache[year]) {
             updatePriceSuggestion();
+            updateAssignAgeInfo();
             return;
         }
         fetch(`api.php?action=get_prices&year=${year}`)
@@ -173,6 +197,7 @@
                 if (result.success) {
                     priceCache[year] = result.preise || {};
                     updatePriceSuggestion();
+                    updateAssignAgeInfo();
                 }
             });
     });
@@ -316,6 +341,7 @@
         assignFields.date.value = getTodayDateString();
         assignFields.notes.value = applicant.notizen || '';
 
+        updateAssignAgeInfo();
         showModal(assignModal);
         assignFields.type.dispatchEvent(new Event('change'));
         assignFields.year.dispatchEvent(new Event('change'));
@@ -372,7 +398,11 @@
         if (!addModal || !addForm || !addFields) return;
         addForm.reset();
         clearValidation(addForm);
+        if (addFields.birthdate) {
+            addFields.birthdate.value = '';
+        }
         addFields.date.value = getTodayDateString();
+        updateApplicantAgeHint();
         showModal(addModal);
         addFields.firstName.focus();
         editingApplicantId = null;
@@ -391,12 +421,20 @@
         if (modal === assignModal) {
             currentApplicant = null;
             currentRow = null;
+            if (assignFields.ageHint) {
+                assignFields.ageHint.textContent = '';
+            }
+            if (assignFields.ageWarning) {
+                assignFields.ageWarning.textContent = '';
+                assignFields.ageWarning.hidden = true;
+            }
         }
         if (modal === addModal && addForm) {
             addForm.reset();
             clearValidation(addForm);
             editingApplicantId = null;
             editingRow = null;
+            updateApplicantAgeHint();
         }
     }
 
@@ -422,10 +460,15 @@
         addFields.city.value = applicant?.ort || '';
         addFields.phone.value = applicant?.telefon || '';
         addFields.email.value = applicant?.email || '';
+        if (addFields.birthdate) {
+            const birthdateValue = applicant?.geburtsdatum && applicant.geburtsdatum !== '0000-00-00' ? applicant.geburtsdatum : '';
+            addFields.birthdate.value = birthdateValue;
+        }
         addFields.card.value = applicant?.fischerkartennummer || '';
         const dateValue = applicant?.bewerbungsdatum;
         addFields.date.value = dateValue && dateValue !== '0000-00-00' ? dateValue : '';
         addFields.notes.value = applicant?.notizen || '';
+        updateApplicantAgeHint();
 
         if (addModalTitle) {
             addModalTitle.textContent = 'Neuwerber bearbeiten';
@@ -510,12 +553,7 @@
         nameCell.innerHTML = `<strong>${escapeHtml(applicant.nachname || '')}, ${escapeHtml(applicant.vorname || '')}</strong>`;
 
         const contactCell = document.createElement('td');
-        contactCell.innerHTML = [
-            `<small>${escapeHtml(applicant.strasse || '')}</small>`,
-            `<small>${escapeHtml(applicant.plz || '')} ${escapeHtml(applicant.ort || '')}</small>`,
-            `<small>Telefon: ${escapeHtml(applicant.telefon || '-')} · E-Mail: ${escapeHtml(applicant.email || '-')}</small>`,
-            `<small>Fischerkartennummer: ${escapeHtml(applicant.fischerkartennummer || '-')}</small>`
-        ].join('<br>');
+        contactCell.innerHTML = renderApplicantContact(applicant);
 
         const dateCell = document.createElement('td');
         dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
@@ -545,12 +583,7 @@
             nameCell.innerHTML = `<strong>${escapeHtml(applicant.nachname || '')}, ${escapeHtml(applicant.vorname || '')}</strong>`;
         }
         if (contactCell) {
-            contactCell.innerHTML = [
-                `<small>${escapeHtml(applicant.strasse || '')}</small>`,
-                `<small>${escapeHtml(applicant.plz || '')} ${escapeHtml(applicant.ort || '')}</small>`,
-                `<small>Telefon: ${escapeHtml(applicant.telefon || '-')} · E-Mail: ${escapeHtml(applicant.email || '-')}</small>`,
-                `<small>Fischerkartennummer: ${escapeHtml(applicant.fischerkartennummer || '-')}</small>`
-            ].join('<br>');
+            contactCell.innerHTML = renderApplicantContact(applicant);
         }
         if (dateCell) {
             dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
@@ -560,6 +593,119 @@
         }
         populateActionCell(actionCell, row);
         refreshTableSearch();
+    }
+
+    function renderApplicantContact(applicant) {
+        const parts = [
+            `<small>${escapeHtml(applicant.strasse || '')}</small>`,
+            `<small>${escapeHtml(applicant.plz || '')} ${escapeHtml(applicant.ort || '')}</small>`,
+            `<small>Telefon: ${escapeHtml(applicant.telefon || '-')} · E-Mail: ${escapeHtml(applicant.email || '-')}</small>`,
+            `<small>Fischerkartennummer: ${escapeHtml(applicant.fischerkartennummer || '-')}</small>`,
+        ];
+
+        const birthdate = applicant?.geburtsdatum || '';
+        if (birthdate && birthdate !== '0000-00-00') {
+            const formatted = escapeHtml(formatDateDisplay(birthdate));
+            const age = calculateAgeFromBirthdate(birthdate);
+            const ageSuffix = age !== null ? ` (Alter: ${age})` : '';
+            parts.push(`<small>Geburtsdatum: ${formatted}${ageSuffix}</small>`);
+        }
+
+        return parts.join('<br>');
+    }
+
+    function updateApplicantAgeHint() {
+        if (!addFields || !addFields.birthdate || !addFields.ageHint) {
+            return;
+        }
+
+        const birthdate = addFields.birthdate.value;
+        const age = calculateAgeFromBirthdate(birthdate);
+        addFields.ageHint.textContent = birthdate && age !== null ? `Alter: ${age} Jahre` : '';
+    }
+
+    function updateAssignAgeInfo() {
+        if (!assignFields.ageHint && !assignFields.ageWarning) {
+            return;
+        }
+
+        const rawBirthdate = currentApplicant?.geburtsdatum || '';
+        const birthdate = rawBirthdate && rawBirthdate !== '0000-00-00' ? rawBirthdate : '';
+        const formatted = birthdate ? formatDateDisplay(birthdate) : null;
+        const age = birthdate ? calculateAgeFromBirthdate(birthdate) : null;
+
+        if (assignFields.ageHint) {
+            if (formatted) {
+                const ageSuffix = age !== null ? ` (Alter: ${age} Jahre)` : '';
+                assignFields.ageHint.textContent = `Geburtsdatum: ${formatted}${ageSuffix}`;
+            } else {
+                assignFields.ageHint.textContent = '';
+            }
+        }
+
+        if (assignFields.ageWarning) {
+            if (age === null) {
+                assignFields.ageWarning.textContent = '';
+                assignFields.ageWarning.hidden = true;
+            } else {
+                const type = assignFields.type ? assignFields.type.value : '';
+                const warning = getAgeWarningMessage(age, type);
+                if (warning) {
+                    assignFields.ageWarning.textContent = warning;
+                    assignFields.ageWarning.hidden = false;
+                } else {
+                    assignFields.ageWarning.textContent = '';
+                    assignFields.ageWarning.hidden = true;
+                }
+            }
+        }
+    }
+
+    function getAgeWarningMessage(age, type) {
+        if (!type || !Object.prototype.hasOwnProperty.call(AGE_RULES, type)) {
+            return null;
+        }
+
+        const rule = AGE_RULES[type];
+        if (!rule) {
+            return null;
+        }
+
+        if (age >= rule.min && age <= rule.max) {
+            return null;
+        }
+
+        const label = LICENSE_TYPE_LABELS[type] || type;
+        const range = `${rule.min}–${rule.max} Jahre`;
+        return `Achtung: Alter ${age} passt nicht zur ${label} (${range}).`;
+    }
+
+    function calculateAgeFromBirthdate(dateString) {
+        if (!dateString) {
+            return null;
+        }
+
+        const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateString);
+        if (!match) {
+            return null;
+        }
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+            return null;
+        }
+
+        const today = new Date();
+        let age = today.getFullYear() - year;
+        const currentMonth = today.getMonth() + 1;
+        const currentDay = today.getDate();
+        if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+            age -= 1;
+        }
+
+        return age >= 0 ? age : null;
     }
 
     function adjustNewcomerCount(delta) {

@@ -85,6 +85,14 @@ $yearOverview = get_year_overview($currentYear);
                                 <strong><?= htmlspecialchars($row['nachname']) ?>, <?= htmlspecialchars($row['vorname']) ?></strong><br>
                                 <small><?= htmlspecialchars($row['strasse'] ?? '') ?>, <?= htmlspecialchars($row['plz'] ?? '') ?> <?= htmlspecialchars($row['ort'] ?? '') ?></small><br>
                                 <small>Telefon: <?= htmlspecialchars($row['telefon'] ?? '-') ?> · E-Mail: <?= htmlspecialchars($row['email'] ?? '-') ?></small>
+                                <?php
+                                    $licenseeBirthdate = $row['geburtsdatum'] ?? null;
+                                    $licenseeBirthdateDisplay = $licenseeBirthdate ? format_date($licenseeBirthdate) : null;
+                                    $licenseeAge = $licenseeBirthdate ? calculate_age($licenseeBirthdate) : null;
+                                ?>
+                                <?php if ($licenseeBirthdateDisplay): ?>
+                                    <br><small>Geburtsdatum: <?= htmlspecialchars($licenseeBirthdateDisplay) ?><?= $licenseeAge !== null ? ' (Alter: ' . (int)$licenseeAge . ')' : '' ?></small>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['lizenztyp']) ?></td>
                             <td><?= format_currency((float)$row['kosten']) ?> €</td>
@@ -190,6 +198,12 @@ $yearOverview = get_year_overview($currentYear);
                     </label>
                     <label>E-Mail
                         <input type="email" id="email" data-validate="email">
+                    </label>
+                    <label>
+                        <span class="label-title">Geburtsdatum</span>
+                        <input type="date" id="geburtsdatum">
+                        <span class="form-hint" id="licenseAgeHint"></span>
+                        <span class="form-warning" id="licenseAgeWarning" hidden></span>
                     </label>
                     <label>
                         <span class="label-title">Fischerkartennummer <span class="required-indicator" aria-hidden="true">*</span></span>

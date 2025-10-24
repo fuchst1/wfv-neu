@@ -82,6 +82,14 @@ $prices = get_license_prices($currentYear);
                             <small><?= htmlspecialchars($applicant['plz'] ?? '') ?> <?= htmlspecialchars($applicant['ort'] ?? '') ?></small><br>
                             <small>Telefon: <?= htmlspecialchars($applicant['telefon'] ?? '-') ?> · E-Mail: <?= htmlspecialchars($applicant['email'] ?? '-') ?></small><br>
                             <small>Fischerkartennummer: <?= htmlspecialchars($applicant['fischerkartennummer'] ?? '-') ?></small>
+                            <?php
+                                $birthdate = $applicant['geburtsdatum'] ?? null;
+                                $birthdateDisplay = $birthdate ? format_date($birthdate) : null;
+                                $age = $birthdate ? calculate_age($birthdate) : null;
+                            ?>
+                            <?php if ($birthdateDisplay): ?>
+                                <br><small>Geburtsdatum: <?= htmlspecialchars($birthdateDisplay) ?><?= $age !== null ? ' (Alter: ' . (int)$age . ')' : '' ?></small>
+                            <?php endif; ?>
                         </td>
                         <td><?= ($formattedDate = format_date($applicant['bewerbungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
                         <td><?= nl2br(htmlspecialchars($applicant['notizen'] ?? '')) ?></td>
@@ -132,6 +140,11 @@ $prices = get_license_prices($currentYear);
                     </label>
                     <label>E-Mail
                         <input type="email" id="applicantEmail" data-validate="email">
+                    </label>
+                    <label>
+                        <span class="label-title">Geburtsdatum</span>
+                        <input type="date" id="applicantBirthdate">
+                        <span class="form-hint" id="applicantAgeHint"></span>
                     </label>
                     <label>
                         <span class="label-title">Fischerkartennummer <span class="required-indicator" aria-hidden="true">*</span></span>
@@ -188,6 +201,8 @@ $prices = get_license_prices($currentYear);
                         <input type="date" id="assignDate">
                     </label>
                 </div>
+                <p class="form-hint" id="assignAgeHint"></p>
+                <p class="form-warning" id="assignAgeWarning" hidden></p>
                 <label>Notizen
                     <textarea id="assignNotes" rows="3"></textarea>
                 </label>

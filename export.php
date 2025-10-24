@@ -25,6 +25,8 @@ $columns = [
     'Ort' => fn(array $row): string => trim((string)($row['ort'] ?? '')),
     'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
     'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
+    'Geburtsdatum' => fn(array $row): string => format_export_date($row['geburtsdatum'] ?? null),
+    'Alter' => fn(array $row): string => format_age_value($row['geburtsdatum'] ?? null),
     'Fischerkartennummer' => fn(array $row): string => trim((string)($row['fischerkartennummer'] ?? '')),
     'Lizenztyp' => fn(array $row): string => trim((string)($row['lizenztyp'] ?? '')),
     'Kosten (€)' => fn(array $row): string => format_decimal($row['kosten'] ?? null),
@@ -77,6 +79,12 @@ function format_export_date(?string $value): string
     }
 
     return $date->format('d.m.Y');
+}
+
+function format_age_value($value): string
+{
+    $age = calculate_age(is_array($value) ? null : $value);
+    return $age !== null ? (string)$age : '';
 }
 
 function normalize_newlines(string $value): string
