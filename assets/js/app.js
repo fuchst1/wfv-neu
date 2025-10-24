@@ -454,9 +454,14 @@
     }
 
     function toggleBoat(show) {
+        if (!licenseFields.boatDetails) {
+            return;
+        }
         if (show) {
+            licenseFields.boatDetails.hidden = false;
             licenseFields.boatDetails.setAttribute('open', '');
         } else {
+            licenseFields.boatDetails.hidden = true;
             licenseFields.boatDetails.removeAttribute('open');
         }
     }
