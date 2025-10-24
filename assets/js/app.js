@@ -47,6 +47,7 @@
 
     const extendFields = {
         year: document.getElementById('extendYear'),
+        license: document.getElementById('extendLicense'),
         type: document.getElementById('extendType'),
         cost: document.getElementById('extendCost'),
         tip: document.getElementById('extendTip'),
@@ -61,6 +62,9 @@
     const createYearButton = document.getElementById('openCreateYear');
     const createYearPriceInputs = createYearForm ? Array.from(createYearForm.querySelectorAll('.price-input')) : [];
     const createYearInput = createYearForm ? document.getElementById('newYear') : null;
+
+    const licenseDataMap = new Map();
+    const licenseRowMap = new Map();
 
     let currentRow = null;
     let currentLicense = null;
@@ -123,6 +127,11 @@
 
     document.querySelectorAll('tbody tr[data-license]').forEach(row => {
         const data = JSON.parse(row.dataset.license);
+        const licenseId = parseInt(data.lizenz_id, 10);
+        if (!Number.isNaN(licenseId)) {
+            licenseDataMap.set(licenseId, data);
+            licenseRowMap.set(licenseId, row);
+        }
         const editButton = row.querySelector('.edit');
         const deleteButton = row.querySelector('.delete');
         const extendButton = row.querySelector('.extend');
@@ -184,12 +193,33 @@
     if (extendFields.year) {
         extendFields.year.addEventListener('change', () => {
             updateExtendPricing();
+            updateExtendSubmitButtonState();
         });
     }
 
     if (extendFields.type) {
         extendFields.type.addEventListener('change', () => {
             updateExtendPricing();
+        });
+    }
+
+    if (extendFields.license) {
+        extendFields.license.addEventListener('change', () => {
+            const selectedId = parseInt(extendFields.license.value, 10);
+            const selectedLicense = Number.isNaN(selectedId) ? null : licenseDataMap.get(selectedId);
+            currentLicense = selectedLicense || null;
+            if (selectedLicense) {
+                applyExtendLicenseDefaults(selectedLicense);
+                if (extendFields.year && extendFields.year.value) {
+                    updateExtendPricing();
+                } else {
+                    updateExtendTotal();
+                }
+                if (selectedLicense && licenseRowMap.has(selectedId)) {
+                    currentRow = licenseRowMap.get(selectedId);
+                }
+            }
+            updateExtendSubmitButtonState();
         });
     }
 
@@ -240,15 +270,18 @@
         extendForm.addEventListener('submit', event => {
             event.preventDefault();
             const toYear = parseInt(extendFields.year.value, 10);
-            if (!toYear) return;
+            const selectedLicenseId = extendFields.license ? parseInt(extendFields.license.value, 10) : (currentLicense ? parseInt(currentLicense.lizenz_id, 10) : NaN);
+            if (!toYear || Number.isNaN(selectedLicenseId) || selectedLicenseId <= 0) return;
+            const selectedLicense = licenseDataMap.get(selectedLicenseId) || currentLicense || {};
+            currentLicense = selectedLicense || null;
             fetch('api.php?action=move_license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     from_year: CURRENT_YEAR,
                     to_year: toYear,
-                    license_id: currentLicense.lizenz_id,
-                    lizenztyp: extendFields.type ? extendFields.type.value || currentLicense.lizenztyp : currentLicense.lizenztyp,
+                    license_id: selectedLicenseId,
+                    lizenztyp: extendFields.type ? extendFields.type.value || selectedLicense.lizenztyp : selectedLicense.lizenztyp,
                     kosten: extendFields.cost.value,
                     trinkgeld: extendFields.tip.value || 0,
                     zahlungsdatum: extendFields.date.value,
@@ -341,27 +374,120 @@
             yearField.disabled = optionElements.length === 0;
             yearField.value = defaultYear;
         }
-        if (extendFields.type) {
-            extendFields.type.value = data.lizenztyp || '';
+        if (extendFields.license) {
+            populateExtendLicenseOptions(parseInt(data.lizenz_id, 10));
         }
-        if (extendSubmitButton) {
-            extendSubmitButton.disabled = optionElements.length === 0;
+        applyExtendLicenseDefaults(data);
+        if (extendFields.date) {
+            extendFields.date.value = getTodayDateString();
         }
-        const baseCost = parseFloat(data.kosten);
-        extendFields.cost.value = Number.isFinite(baseCost) ? baseCost.toFixed(2) : Number(0).toFixed(2);
-        extendFields.tip.value = Number(0).toFixed(2);
-        updateExtendTotal();
-        extendFields.date.value = getTodayDateString();
-        extendFields.notes.value = '';
+        if (extendFields.notes) {
+            extendFields.notes.value = '';
+        }
         if (extendModal) {
             extendModal.hidden = false;
         }
         if (defaultYear && yearField) {
             updateExtendPricing();
+        } else {
+            updateExtendTotal();
         }
         if (!optionElements.length) {
             alert('Kein Zieljahr vorhanden. Bitte neues Jahr im Adminbereich anlegen.');
         }
+        updateExtendSubmitButtonState();
+    }
+
+    function populateExtendLicenseOptions(selectedLicenseId) {
+        if (!extendFields.license) {
+            return;
+        }
+
+        const select = extendFields.license;
+        const previousValue = select.value;
+        select.innerHTML = '';
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = '– bitte wählen –';
+        select.appendChild(placeholderOption);
+
+        const licenses = Array.from(licenseDataMap.values()).sort((a, b) => {
+            const lastNameCompare = (a.nachname || '').localeCompare(b.nachname || '', 'de', { sensitivity: 'base' });
+            if (lastNameCompare !== 0) {
+                return lastNameCompare;
+            }
+            const firstNameCompare = (a.vorname || '').localeCompare(b.vorname || '', 'de', { sensitivity: 'base' });
+            if (firstNameCompare !== 0) {
+                return firstNameCompare;
+            }
+            return String(a.lizenztyp || '').localeCompare(String(b.lizenztyp || ''), 'de', { sensitivity: 'base' });
+        });
+
+        licenses.forEach(license => {
+            const option = document.createElement('option');
+            option.value = String(license.lizenz_id);
+            const parts = [];
+            if (license.nachname) {
+                parts.push(license.nachname);
+            }
+            if (license.vorname) {
+                parts.push(license.vorname);
+            }
+            const name = parts.length ? parts.join(', ') : `#${license.lizenz_id}`;
+            option.textContent = `${name} – ${license.lizenztyp}`;
+            select.appendChild(option);
+        });
+
+        let targetValue = '';
+        if (selectedLicenseId && licenses.some(license => parseInt(license.lizenz_id, 10) === selectedLicenseId)) {
+            targetValue = String(selectedLicenseId);
+        } else if (previousValue && licenses.some(license => String(license.lizenz_id) === previousValue)) {
+            targetValue = previousValue;
+        } else if (licenses.length === 1) {
+            targetValue = String(licenses[0].lizenz_id);
+        }
+
+        if (targetValue) {
+            select.value = targetValue;
+        }
+
+        select.disabled = licenses.length === 0;
+    }
+
+    function applyExtendLicenseDefaults(licenseData) {
+        if (!licenseData) {
+            return;
+        }
+
+        currentLicense = licenseData;
+        if (extendFields.license) {
+            extendFields.license.value = String(licenseData.lizenz_id);
+        }
+        if (extendFields.type) {
+            const typeValue = licenseData.lizenztyp || '';
+            const hasTypeOption = Array.from(extendFields.type.options || []).some(option => option.value === typeValue);
+            extendFields.type.value = hasTypeOption ? typeValue : '';
+        }
+        if (extendFields.cost) {
+            const baseCost = parseFloat(licenseData.kosten);
+            extendFields.cost.value = Number.isFinite(baseCost) ? baseCost.toFixed(2) : Number(0).toFixed(2);
+        }
+        if (extendFields.tip) {
+            extendFields.tip.value = Number(0).toFixed(2);
+        }
+        updateExtendTotal();
+    }
+
+    function updateExtendSubmitButtonState() {
+        if (!extendSubmitButton) {
+            return;
+        }
+
+        const yearValid = !extendFields.year || (!extendFields.year.disabled && extendFields.year.value);
+        const licenseValid = !extendFields.license || (!extendFields.license.disabled && extendFields.license.value);
+
+        extendSubmitButton.disabled = !(yearValid && licenseValid);
     }
 
     function resetLicenseForm() {

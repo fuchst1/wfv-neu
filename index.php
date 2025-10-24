@@ -295,6 +295,11 @@ $yearOverview = get_year_overview($currentYear);
                             <?php endforeach; ?>
                         </select>
                     </label>
+                    <label>Lizenz
+                        <select id="extendLicense" data-validate="required" required>
+                            <option value="">– bitte wählen –</option>
+                        </select>
+                    </label>
                     <label>Lizenztyp
                         <select id="extendType" data-validate="required" required>
                             <option value="">– bitte wählen –</option>
