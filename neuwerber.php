@@ -147,8 +147,8 @@ $prices = get_license_prices($currentYear);
                         <span class="form-hint" id="applicantAgeHint"></span>
                     </label>
                     <label>
-                        <span class="label-title">Fischerkartennummer <span class="required-indicator" aria-hidden="true">*</span></span>
-                        <input type="text" id="applicantCard" data-validate="required" required>
+                        <span class="label-title">Fischerkartennummer</span>
+                        <input type="text" id="applicantCard">
                     </label>
                 </div>
                 <label>Bewerbungsdatum
