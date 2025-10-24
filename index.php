@@ -240,7 +240,7 @@ $yearOverview = get_year_overview($currentYear);
                 <label>Notizen
                     <textarea id="lizenzNotizen" rows="3"></textarea>
                 </label>
-                <details id="boatDetails">
+                <details id="boatDetails" hidden>
                     <summary>Bootsdaten</summary>
                     <label>Bootsnummer
                         <input type="text" id="bootnummer">
