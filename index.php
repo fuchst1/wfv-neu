@@ -328,7 +328,7 @@ $yearOverview = get_year_overview($currentYear);
         <form id="createYearForm">
             <section class="form-section">
                 <label>Jahr
-                    <input type="number" id="newYear" min="2000" value="<?= $currentYear + 1 ?>" data-validate="required" required>
+                    <input type="number" id="newYear" min="2000" value="<?= (int)date('Y') + 1 ?>" data-validate="required" required>
                 </label>
                 <p>Bitte Preise für jede Lizenzart festlegen:</p>
                 <div class="form-grid">

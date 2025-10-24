@@ -44,6 +44,7 @@
     const createYearForm = document.getElementById('createYearForm');
     const createYearButton = document.getElementById('openCreateYear');
     const createYearPriceInputs = createYearForm ? Array.from(createYearForm.querySelectorAll('.price-input')) : [];
+    const createYearInput = createYearForm ? document.getElementById('newYear') : null;
 
     let currentRow = null;
     let currentLicense = null;
@@ -353,6 +354,11 @@
     function prefillCreateYearForm() {
         if (!createYearForm) return;
         createYearForm.reset();
+        if (createYearInput) {
+            const nextYear = new Date().getFullYear() + 1;
+            createYearInput.value = nextYear;
+        }
+
         if (!Array.isArray(createYearPriceInputs) || createYearPriceInputs.length === 0) {
             return;
         }
