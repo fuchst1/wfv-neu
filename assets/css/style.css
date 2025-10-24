@@ -411,6 +411,14 @@ details {
     color: var(--muted);
     font-size: 0.85rem;
     margin: 0.5rem 0 0;
+    display: block;
+}
+
+.form-warning {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0;
+    display: block;
 }
 
 @media (max-width: 768px) {

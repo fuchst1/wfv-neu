@@ -10,6 +10,16 @@
     const cancelBlockWarning = document.getElementById('cancelBlockWarning');
     const closeBlockWarningButton = document.getElementById('closeBlockWarning');
 
+    const AGE_RULES = {
+        Kinder: { min: 10, max: 14 },
+        Jugend: { min: 14, max: 18 },
+    };
+
+    const LICENSE_TYPE_LABELS = {
+        Kinder: 'Kinderlizenz',
+        Jugend: 'Jugendlizenz',
+    };
+
     const licenseFields = {
         id: document.getElementById('licenseId'),
         licenseeId: document.getElementById('licenseeId'),
@@ -21,6 +31,9 @@
         phone: document.getElementById('telefon'),
         email: document.getElementById('email'),
         card: document.getElementById('fischerkartennummer'),
+        birthdate: document.getElementById('geburtsdatum'),
+        ageHint: document.getElementById('licenseAgeHint'),
+        ageWarning: document.getElementById('licenseAgeWarning'),
         type: document.getElementById('lizenztyp'),
         cost: document.getElementById('kosten'),
         tip: document.getElementById('trinkgeld'),
@@ -156,6 +169,15 @@
             }
             toggleBoat(type === 'Boot');
             updateTotal();
+            updateLicenseAgeState();
+        });
+    }
+
+    if (licenseFields.birthdate) {
+        ['input', 'change'].forEach(eventName => {
+            licenseFields.birthdate.addEventListener(eventName, () => {
+                updateLicenseAgeState();
+            });
         });
     }
 
@@ -283,6 +305,7 @@
         if (data) {
             fillLicenseForm(data);
         }
+        updateLicenseAgeState();
         licenseModal.hidden = false;
     }
 
@@ -347,6 +370,14 @@
         toggleBoat(false);
         document.querySelectorAll('.validation-hint').forEach(h => h.textContent = '');
         document.querySelectorAll('.validation-error').forEach(el => el.classList.remove('validation-error'));
+        if (licenseFields.ageHint) {
+            licenseFields.ageHint.textContent = '';
+        }
+        if (licenseFields.ageWarning) {
+            licenseFields.ageWarning.textContent = '';
+            licenseFields.ageWarning.hidden = true;
+        }
+        updateLicenseAgeState();
     }
 
     function fillLicenseForm(data) {
@@ -360,6 +391,10 @@
         licenseFields.phone.value = data.telefon || '';
         licenseFields.email.value = data.email || '';
         licenseFields.card.value = data.fischerkartennummer || '';
+        if (licenseFields.birthdate) {
+            const birthdateValue = data.geburtsdatum && data.geburtsdatum !== '0000-00-00' ? data.geburtsdatum : '';
+            licenseFields.birthdate.value = birthdateValue;
+        }
         licenseFields.type.value = data.lizenztyp;
         licenseFields.cost.value = Number(data.kosten).toFixed(2);
         licenseFields.tip.value = Number(data.trinkgeld).toFixed(2);
@@ -369,6 +404,7 @@
         licenseFields.boatNumber.value = data.bootnummer || '';
         licenseFields.boatNotes.value = data.boot_notizen || '';
         toggleBoat(data.lizenztyp === 'Boot');
+        updateLicenseAgeState();
     }
 
     function closeModals() {
@@ -521,6 +557,78 @@
         pendingBlockPayload = null;
     }
 
+    function updateLicenseAgeState() {
+        if (!licenseFields.birthdate) {
+            return;
+        }
+
+        const birthdate = licenseFields.birthdate.value;
+        const age = calculateAgeFromBirthdate(birthdate);
+
+        if (licenseFields.ageHint) {
+            licenseFields.ageHint.textContent = birthdate && age !== null ? `Alter: ${age} Jahre` : '';
+        }
+
+        if (licenseFields.ageWarning) {
+            const type = licenseFields.type ? licenseFields.type.value : '';
+            const warning = age !== null ? getAgeWarningMessage(age, type) : null;
+            if (warning) {
+                licenseFields.ageWarning.textContent = warning;
+                licenseFields.ageWarning.hidden = false;
+            } else {
+                licenseFields.ageWarning.textContent = '';
+                licenseFields.ageWarning.hidden = true;
+            }
+        }
+    }
+
+    function getAgeWarningMessage(age, type) {
+        if (!type || !Object.prototype.hasOwnProperty.call(AGE_RULES, type)) {
+            return null;
+        }
+
+        const rule = AGE_RULES[type];
+        if (!rule) {
+            return null;
+        }
+
+        if (age >= rule.min && age <= rule.max) {
+            return null;
+        }
+
+        const label = LICENSE_TYPE_LABELS[type] || type;
+        const range = `${rule.min}–${rule.max} Jahre`;
+        return `Achtung: Alter ${age} passt nicht zur ${label} (${range}).`;
+    }
+
+    function calculateAgeFromBirthdate(dateString) {
+        if (!dateString) {
+            return null;
+        }
+
+        const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateString);
+        if (!match) {
+            return null;
+        }
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+            return null;
+        }
+
+        const today = new Date();
+        let age = today.getFullYear() - year;
+        const currentMonth = today.getMonth() + 1;
+        const currentDay = today.getDate();
+        if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+            age -= 1;
+        }
+
+        return age >= 0 ? age : null;
+    }
+
     function buildLicensePayload() {
         return {
             year: CURRENT_YEAR,
@@ -541,7 +649,8 @@
                 ort: licenseFields.city.value,
                 telefon: licenseFields.phone.value,
                 email: licenseFields.email.value,
-                fischerkartennummer: licenseFields.card.value
+                fischerkartennummer: licenseFields.card.value,
+                geburtsdatum: licenseFields.birthdate ? licenseFields.birthdate.value : ''
             },
             boat: {
                 bootnummer: licenseFields.boatNumber.value,

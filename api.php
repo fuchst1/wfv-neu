@@ -138,6 +138,15 @@ function save_license(): void
         return;
     }
 
+    ensure_person_birthdate_columns();
+
+    $birthdateValidation = validate_birthdate_input($licenseePayload['geburtsdatum'] ?? null, 'Geburtsdatum');
+    if ($birthdateValidation['error']) {
+        echo json_encode(['success' => false, 'message' => $birthdateValidation['error']]);
+        return;
+    }
+    $licenseePayload['geburtsdatum'] = $birthdateValidation['value'];
+
     $optionalFields = ['strasse', 'plz', 'ort', 'telefon', 'email', 'fischerkartennummer'];
     foreach ($optionalFields as $field) {
         if (array_key_exists($field, $licenseePayload)) {
@@ -162,10 +171,11 @@ function save_license(): void
 
     try {
         if ($licenseeId > 0) {
-            $stmt = $pdo->prepare('UPDATE lizenznehmer SET vorname=:vorname, nachname=:nachname, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte WHERE id = :id');
+            $stmt = $pdo->prepare('UPDATE lizenznehmer SET vorname=:vorname, nachname=:nachname, geburtsdatum=:geburtsdatum, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte WHERE id = :id');
             $stmt->execute([
                 'vorname' => $licenseePayload['vorname'],
                 'nachname' => $licenseePayload['nachname'],
+                'geburtsdatum' => $licenseePayload['geburtsdatum'],
                 'strasse' => $licenseePayload['strasse'],
                 'plz' => $licenseePayload['plz'],
                 'ort' => $licenseePayload['ort'],
@@ -175,10 +185,11 @@ function save_license(): void
                 'id' => $licenseeId,
             ]);
         } else {
-            $stmt = $pdo->prepare('INSERT INTO lizenznehmer (vorname, nachname, strasse, plz, ort, telefon, email, fischerkartennummer) VALUES (:vorname, :nachname, :strasse, :plz, :ort, :telefon, :email, :karte)');
+            $stmt = $pdo->prepare('INSERT INTO lizenznehmer (vorname, nachname, geburtsdatum, strasse, plz, ort, telefon, email, fischerkartennummer) VALUES (:vorname, :nachname, :geburtsdatum, :strasse, :plz, :ort, :telefon, :email, :karte)');
             $stmt->execute([
                 'vorname' => $licenseePayload['vorname'],
                 'nachname' => $licenseePayload['nachname'],
+                'geburtsdatum' => $licenseePayload['geburtsdatum'],
                 'strasse' => $licenseePayload['strasse'],
                 'plz' => $licenseePayload['plz'],
                 'ort' => $licenseePayload['ort'],
@@ -665,14 +676,19 @@ function assign_newcomer(): void
     }
 
     ensure_year_exists($year);
+    ensure_person_birthdate_columns();
     $licenseTable = license_table($year);
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('INSERT INTO lizenznehmer (vorname, nachname, strasse, plz, ort, telefon, email, fischerkartennummer) VALUES (:vorname, :nachname, :strasse, :plz, :ort, :telefon, :email, :karte)');
+        $birthdateData = validate_birthdate_input($applicant['geburtsdatum'] ?? null, 'Geburtsdatum');
+        $applicantBirthdate = $birthdateData['error'] ? null : $birthdateData['value'];
+
+        $stmt = $pdo->prepare('INSERT INTO lizenznehmer (vorname, nachname, geburtsdatum, strasse, plz, ort, telefon, email, fischerkartennummer) VALUES (:vorname, :nachname, :geburtsdatum, :strasse, :plz, :ort, :telefon, :email, :karte)');
         $stmt->execute([
             'vorname' => $applicant['vorname'] ?? '',
             'nachname' => $applicant['nachname'] ?? '',
+            'geburtsdatum' => $applicantBirthdate,
             'strasse' => $applicant['strasse'] ?? null,
             'plz' => $applicant['plz'] ?? null,
             'ort' => $applicant['ort'] ?? null,
@@ -722,6 +738,8 @@ function create_newcomer(): void
         return;
     }
 
+    ensure_person_birthdate_columns();
+
     $street = trim((string)($data['strasse'] ?? '')) ?: null;
     $zip = trim((string)($data['plz'] ?? '')) ?: null;
     $city = trim((string)($data['ort'] ?? '')) ?: null;
@@ -730,6 +748,12 @@ function create_newcomer(): void
     $email = $emailRaw !== '' ? $emailRaw : null;
     $cardRaw = trim((string)($data['fischerkartennummer'] ?? ''));
     $card = $cardRaw !== '' ? $cardRaw : null;
+    $birthdateValidation = validate_birthdate_input($data['geburtsdatum'] ?? null, 'Geburtsdatum');
+    if ($birthdateValidation['error']) {
+        echo json_encode(['success' => false, 'message' => $birthdateValidation['error']]);
+        return;
+    }
+    $birthdate = $birthdateValidation['value'];
     $date = trim((string)($data['bewerbungsdatum'] ?? '')) ?: null;
     $notes = trim((string)($data['notizen'] ?? '')) ?: null;
 
@@ -755,10 +779,11 @@ function create_newcomer(): void
     }
 
     $pdo = get_pdo();
-    $stmt = $pdo->prepare('INSERT INTO bewerber (vorname, nachname, strasse, plz, ort, telefon, email, fischerkartennummer, bewerbungsdatum, notizen) VALUES (:vorname, :nachname, :strasse, :plz, :ort, :telefon, :email, :karte, :datum, :notizen)');
+    $stmt = $pdo->prepare('INSERT INTO bewerber (vorname, nachname, geburtsdatum, strasse, plz, ort, telefon, email, fischerkartennummer, bewerbungsdatum, notizen) VALUES (:vorname, :nachname, :geburtsdatum, :strasse, :plz, :ort, :telefon, :email, :karte, :datum, :notizen)');
     $stmt->execute([
         'vorname' => $firstName,
         'nachname' => $lastName,
+        'geburtsdatum' => $birthdate,
         'strasse' => $street,
         'plz' => $zip,
         'ort' => $city,
@@ -800,6 +825,8 @@ function update_newcomer(): void
         return;
     }
 
+    ensure_person_birthdate_columns();
+
     $street = trim((string)($data['strasse'] ?? '')) ?: null;
     $zip = trim((string)($data['plz'] ?? '')) ?: null;
     $city = trim((string)($data['ort'] ?? '')) ?: null;
@@ -808,6 +835,12 @@ function update_newcomer(): void
     $email = $emailRaw !== '' ? $emailRaw : null;
     $cardRaw = trim((string)($data['fischerkartennummer'] ?? ''));
     $card = $cardRaw !== '' ? $cardRaw : null;
+    $birthdateValidation = validate_birthdate_input($data['geburtsdatum'] ?? null, 'Geburtsdatum');
+    if ($birthdateValidation['error']) {
+        echo json_encode(['success' => false, 'message' => $birthdateValidation['error']]);
+        return;
+    }
+    $birthdate = $birthdateValidation['value'];
     $dateRaw = trim((string)($data['bewerbungsdatum'] ?? ''));
     $date = $dateRaw !== '' ? $dateRaw : null;
     $notesRaw = trim((string)($data['notizen'] ?? ''));
@@ -835,10 +868,11 @@ function update_newcomer(): void
     }
 
     $pdo = get_pdo();
-    $stmt = $pdo->prepare('UPDATE bewerber SET vorname=:vorname, nachname=:nachname, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte, bewerbungsdatum=:datum, notizen=:notizen WHERE id = :id');
+    $stmt = $pdo->prepare('UPDATE bewerber SET vorname=:vorname, nachname=:nachname, geburtsdatum=:geburtsdatum, strasse=:strasse, plz=:plz, ort=:ort, telefon=:telefon, email=:email, fischerkartennummer=:karte, bewerbungsdatum=:datum, notizen=:notizen WHERE id = :id');
     $stmt->execute([
         'vorname' => $firstName,
         'nachname' => $lastName,
+        'geburtsdatum' => $birthdate,
         'strasse' => $street,
         'plz' => $zip,
         'ort' => $city,
@@ -881,4 +915,24 @@ function delete_newcomer(): void
     }
 
     echo json_encode(['success' => true]);
+}
+
+function validate_birthdate_input($value, string $fieldLabel = 'Geburtsdatum'): array
+{
+    $rawValue = $value !== null ? trim((string)$value) : '';
+    if ($rawValue === '') {
+        return ['value' => null, 'error' => null];
+    }
+
+    $date = DateTimeImmutable::createFromFormat('Y-m-d', $rawValue);
+    if (!$date || $date->format('Y-m-d') !== $rawValue) {
+        return ['value' => null, 'error' => $fieldLabel . ' ist ungültig.'];
+    }
+
+    $today = new DateTimeImmutable('today');
+    if ($date > $today) {
+        return ['value' => null, 'error' => $fieldLabel . ' darf nicht in der Zukunft liegen.'];
+    }
+
+    return ['value' => $date->format('Y-m-d'), 'error' => null];
 }

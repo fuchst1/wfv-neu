@@ -84,6 +84,19 @@ function ensure_blocklist_table_exists(): void
     ensure_column_exists($pdo, $blocklistTable, 'notiz', 'notiz TEXT NULL');
 }
 
+function ensure_person_birthdate_columns(): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $pdo = get_pdo();
+    ensure_column_exists($pdo, 'lizenznehmer', 'geburtsdatum', 'geburtsdatum DATE NULL');
+    ensure_column_exists($pdo, 'bewerber', 'geburtsdatum', 'geburtsdatum DATE NULL');
+    $ensured = true;
+}
+
 function ensure_year_exists(int $year): bool
 {
     $pdo = get_pdo();
@@ -223,6 +236,7 @@ function get_license_prices(int $year): array
 function get_all_licensees(): array
 {
     $pdo = get_pdo();
+    ensure_person_birthdate_columns();
     $stmt = $pdo->query('SELECT * FROM lizenznehmer ORDER BY nachname, vorname');
     return $stmt->fetchAll();
 }
@@ -230,6 +244,7 @@ function get_all_licensees(): array
 function get_newcomers(): array
 {
     $pdo = get_pdo();
+    ensure_person_birthdate_columns();
     $stmt = $pdo->query('SELECT * FROM bewerber ORDER BY bewerbungsdatum DESC, nachname, vorname');
     return $stmt->fetchAll();
 }
@@ -237,6 +252,7 @@ function get_newcomers(): array
 function get_licensees_for_year(int $year): array
 {
     $pdo = get_pdo();
+    ensure_person_birthdate_columns();
     $licenseTable = license_table($year);
 
     ensure_year_exists($year);
@@ -259,6 +275,7 @@ function get_boats_overview(): array
 {
     $pdo = get_pdo();
     ensure_boats_table_exists();
+    ensure_person_birthdate_columns();
     $boatsTable = boats_table();
 
     $sql = "SELECT b.id AS boot_id, b.bootnummer, b.notizen AS boot_notizen, b.lizenznehmer_id,
@@ -384,4 +401,30 @@ function format_date(?string $value): ?string
     }
 
     return $date->format('d.m.Y');
+}
+
+function calculate_age(?string $date): ?int
+{
+    if ($date === null) {
+        return null;
+    }
+
+    $date = trim($date);
+    if ($date === '' || $date === '0000-00-00') {
+        return null;
+    }
+
+    $birthdate = DateTimeImmutable::createFromFormat('Y-m-d', $date);
+    if (!$birthdate) {
+        return null;
+    }
+
+    $today = new DateTimeImmutable('today');
+    if ($birthdate > $today) {
+        return null;
+    }
+
+    $diff = $birthdate->diff($today);
+    $age = (int)$diff->y;
+    return $age >= 0 ? $age : null;
 }
