@@ -584,6 +584,7 @@ function save_block_entry(): void
     $vorname = trim((string)($entry['vorname'] ?? ''));
     $nachname = trim((string)($entry['nachname'] ?? ''));
     $lizenznummer = trim((string)($entry['lizenznummer'] ?? ''));
+    $notiz = trim((string)($entry['notiz'] ?? ''));
     $id = isset($entry['id']) ? (int)$entry['id'] : 0;
 
     if ($vorname === '' || $nachname === '') {
@@ -596,6 +597,7 @@ function save_block_entry(): void
         'vorname' => $vorname,
         'nachname' => $nachname,
         'lizenznummer' => $lizenznummer,
+        'notiz' => $notiz,
     ]);
 
     echo json_encode(['success' => true]);

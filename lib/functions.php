@@ -52,6 +52,21 @@ function ensure_boats_table_exists(): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
+function ensure_column_exists(PDO $pdo, string $table, string $column, string $definition): void
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column'
+    );
+    $stmt->execute([
+        'table' => $table,
+        'column' => $column,
+    ]);
+
+    if ((int)$stmt->fetchColumn() === 0) {
+        $pdo->exec(sprintf('ALTER TABLE `%s` ADD COLUMN %s', $table, $definition));
+    }
+}
+
 function ensure_blocklist_table_exists(): void
 {
     $pdo = get_pdo();
@@ -65,6 +80,8 @@ function ensure_blocklist_table_exists(): void
         erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    ensure_column_exists($pdo, $blocklistTable, 'notiz', 'notiz TEXT NULL');
 }
 
 function ensure_year_exists(int $year): bool
@@ -154,23 +171,27 @@ function save_blocklist_entry(array $entry): int
     $nachname = trim((string)($entry['nachname'] ?? ''));
     $lizenznummerRaw = trim((string)($entry['lizenznummer'] ?? ''));
     $lizenznummer = $lizenznummerRaw !== '' ? $lizenznummerRaw : null;
+    $notizRaw = trim((string)($entry['notiz'] ?? ''));
+    $notiz = $notizRaw !== '' ? $notizRaw : null;
 
     if ($id > 0) {
-        $stmt = $pdo->prepare("UPDATE {$table} SET vorname = :vorname, nachname = :nachname, lizenznummer = :lizenznummer WHERE id = :id");
+        $stmt = $pdo->prepare("UPDATE {$table} SET vorname = :vorname, nachname = :nachname, lizenznummer = :lizenznummer, notiz = :notiz WHERE id = :id");
         $stmt->execute([
             'vorname' => $vorname,
             'nachname' => $nachname,
             'lizenznummer' => $lizenznummer,
+            'notiz' => $notiz,
             'id' => $id,
         ]);
         return $id;
     }
 
-    $stmt = $pdo->prepare("INSERT INTO {$table} (vorname, nachname, lizenznummer) VALUES (:vorname, :nachname, :lizenznummer)");
+    $stmt = $pdo->prepare("INSERT INTO {$table} (vorname, nachname, lizenznummer, notiz) VALUES (:vorname, :nachname, :lizenznummer, :notiz)");
     $stmt->execute([
         'vorname' => $vorname,
         'nachname' => $nachname,
         'lizenznummer' => $lizenznummer,
+        'notiz' => $notiz,
     ]);
 
     return (int)$pdo->lastInsertId();
