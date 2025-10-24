@@ -132,7 +132,7 @@ function find_blocklist_entry(string $vorname, string $nachname, ?string $lizenz
     }
 
     if ($nachname !== '') {
-        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE (vorname IS NULL OR TRIM(vorname) = '') AND LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname)) ORDER BY id ASC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE LOWER(TRIM(nachname)) = LOWER(TRIM(:nachname)) ORDER BY id ASC LIMIT 1");
         $stmt->execute(['nachname' => $nachname]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row !== false) {
