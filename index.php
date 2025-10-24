@@ -33,7 +33,7 @@ $yearOverview = get_year_overview($currentYear);
     </div>
     <?php
         $currentPage = 'index';
-        $showCreateYearButton = true;
+        $yearDisplayLimit = 5;
         include __DIR__ . '/partials/year_nav.php';
     ?>
 </header>
@@ -316,35 +316,6 @@ $yearOverview = get_year_overview($currentYear);
             <button type="button" class="secondary" id="cancelBlockWarning">Zurück</button>
             <button type="button" class="primary" id="confirmBlockOverride">Trotzdem speichern</button>
         </footer>
-    </div>
-</div>
-
-<div class="modal" id="createYearModal" hidden>
-    <div class="modal-content">
-        <header>
-            <h2>Neues Jahr anlegen</h2>
-            <button class="close" data-close>&times;</button>
-        </header>
-        <form id="createYearForm">
-            <section class="form-section">
-                <label>Jahr
-                    <input type="number" id="newYear" min="2000" value="<?= (int)date('Y') + 1 ?>" data-validate="required" required>
-                </label>
-                <p>Bitte Preise für jede Lizenzart festlegen:</p>
-                <div class="form-grid">
-                    <?php $types = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend']; ?>
-                    <?php foreach ($types as $type): ?>
-                        <label><?= $type ?> (€)
-                            <input type="number" class="price-input" data-type="<?= $type ?>" step="0.01" min="0" required>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-            <footer class="modal-footer">
-                <button type="button" class="secondary" data-close>Abbrechen</button>
-                <button type="submit" class="primary">Jahr erstellen</button>
-            </footer>
-        </form>
     </div>
 </div>
 

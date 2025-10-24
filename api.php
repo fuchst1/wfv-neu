@@ -41,6 +41,9 @@ try {
         case 'create_year':
             create_year();
             break;
+        case 'delete_year':
+            delete_year();
+            break;
         case 'get_prices':
             get_prices();
             break;
@@ -513,6 +516,36 @@ function create_year(): void
                 'preis' => $price,
             ]);
         }
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
+
+function delete_year(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $year = (int)($data['year'] ?? 0);
+    if ($year < 2000) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    if (!in_array($year, available_years(), true)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr existiert nicht.']);
+        return;
+    }
+
+    $pdo = get_pdo();
+    $licenseTable = license_table($year);
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec("DROP TABLE IF EXISTS {$licenseTable}");
+        $stmt = $pdo->prepare('DELETE FROM lizenzpreise WHERE jahr = :jahr');
+        $stmt->execute(['jahr' => $year]);
         $pdo->commit();
         echo json_encode(['success' => true]);
     } catch (Throwable $e) {

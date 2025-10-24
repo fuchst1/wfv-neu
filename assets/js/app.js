@@ -52,7 +52,9 @@
 
     Validation.attach(licenseForm);
     Validation.attach(document.getElementById('extendForm'));
-    Validation.attach(createYearForm);
+    if (createYearForm) {
+        Validation.attach(createYearForm);
+    }
 
     document.querySelectorAll('[data-close]').forEach(btn => {
         btn.addEventListener('click', () => closeModals());
@@ -224,29 +226,31 @@
             .catch(() => alert('Verlängerung fehlgeschlagen'));
     });
 
-    createYearForm.addEventListener('submit', event => {
-        event.preventDefault();
-        const year = parseInt(document.getElementById('newYear').value, 10);
-        if (!year) return;
-        const prices = {};
-        createYearForm.querySelectorAll('.price-input').forEach(input => {
-            prices[input.dataset.type] = input.value || 0;
-        });
-        fetch('api.php?action=create_year', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ year, preise: prices })
-        })
-            .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    window.location.href = `?jahr=${year}`;
-                } else {
-                    alert(result.message || 'Jahr konnte nicht erstellt werden');
-                }
+    if (createYearForm) {
+        createYearForm.addEventListener('submit', event => {
+            event.preventDefault();
+            const year = parseInt(document.getElementById('newYear').value, 10);
+            if (!year) return;
+            const prices = {};
+            createYearForm.querySelectorAll('.price-input').forEach(input => {
+                prices[input.dataset.type] = input.value || 0;
+            });
+            fetch('api.php?action=create_year', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year, preise: prices })
             })
-            .catch(() => alert('Jahr konnte nicht erstellt werden'));
-    });
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        window.location.href = `?jahr=${year}`;
+                    } else {
+                        alert(result.message || 'Jahr konnte nicht erstellt werden');
+                    }
+                })
+                .catch(() => alert('Jahr konnte nicht erstellt werden'));
+        });
+    }
 
     function openLicenseModal(data, row) {
         currentRow = row || null;
