@@ -245,6 +245,14 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
+tbody td {
+    font-size: 1.05rem;
+}
+
+tbody td small {
+    font-size: 0.9rem;
+}
+
 .empty {
     text-align: center;
     color: var(--muted);
@@ -252,9 +260,9 @@ tbody tr:last-child td {
 
 button {
     border: none;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
+    border-radius: 0.45rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: transform 0.15s ease, background 0.15s ease;
 }
