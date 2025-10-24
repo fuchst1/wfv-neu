@@ -47,6 +47,9 @@
     let editingApplicantId = null;
     let editingRow = null;
     let pendingAssignmentPayload = null;
+    let pendingApplicantPayload = null;
+    let pendingApplicantAction = null;
+    let pendingBlockContext = null;
     const priceCache = {};
 
     if (typeof LICENSE_PRICES === 'object') {
@@ -79,12 +82,24 @@
 
     if (confirmBlockOverride) {
         confirmBlockOverride.addEventListener('click', () => {
-            if (!pendingAssignmentPayload) {
-                closeBlockWarning();
+            if (pendingBlockContext === 'assign' && pendingAssignmentPayload) {
+                const payload = pendingAssignmentPayload;
+                pendingBlockContext = null;
+                hideBlockWarning();
+                submitAssignment(payload, true);
                 return;
             }
-            hideBlockWarning();
-            submitAssignment(pendingAssignmentPayload, true);
+
+            if (pendingBlockContext === 'applicant' && pendingApplicantPayload && pendingApplicantAction) {
+                const action = pendingApplicantAction;
+                const payload = pendingApplicantPayload;
+                pendingBlockContext = null;
+                hideBlockWarning();
+                submitApplicant(action, payload, true);
+                return;
+            }
+
+            closeBlockWarning();
         });
     }
 
@@ -108,7 +123,6 @@
             }
 
             const payload = {
-                action: editingApplicantId ? 'update_newcomer' : 'create_newcomer',
                 id: editingApplicantId,
                 vorname: addFields.firstName.value,
                 nachname: addFields.lastName.value,
@@ -124,26 +138,7 @@
 
             const action = editingApplicantId ? 'update_newcomer' : 'create_newcomer';
 
-            fetch(`api.php?action=${action}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-                .then(r => r.json())
-                .then(result => {
-                    if (result.success && result.bewerber) {
-                        if (editingApplicantId && editingRow) {
-                            updateApplicantRow(editingRow, result.bewerber);
-                        } else {
-                            addApplicantRow(result.bewerber);
-                            adjustNewcomerCount(1);
-                        }
-                        hideModal(addModal);
-                    } else {
-                        alert(result.message || 'Neuwerber konnte nicht gespeichert werden.');
-                    }
-                })
-                .catch(() => alert('Neuwerber konnte nicht gespeichert werden.'));
+            submitApplicant(action, payload, false);
         });
     }
 
@@ -212,6 +207,7 @@
             .then(result => handleAssignmentResult(result, payload, force))
             .catch(() => {
                 pendingAssignmentPayload = null;
+                pendingBlockContext = null;
                 alert('Lizenz konnte nicht zugewiesen werden.');
             });
     }
@@ -219,6 +215,7 @@
     function handleAssignmentResult(result, payload, force) {
         if (result.success) {
             pendingAssignmentPayload = null;
+            pendingBlockContext = null;
             if (currentRow) {
                 currentRow.remove();
                 adjustNewcomerCount(-1);
@@ -231,37 +228,68 @@
 
         if (result.blocked && !force) {
             pendingAssignmentPayload = payload;
-            showBlockWarning(result.entry);
+            pendingBlockContext = 'assign';
+            showBlockWarning(result.entry, { type: 'assign', payload });
             return;
         }
 
         pendingAssignmentPayload = null;
+        pendingBlockContext = null;
         alert(result.message || 'Lizenz konnte nicht zugewiesen werden.');
     }
 
-    function showBlockWarning(entry) {
-        const firstName = currentApplicant?.vorname || '';
-        const lastName = currentApplicant?.nachname || '';
+    function showBlockWarning(entry, options = {}) {
+        const context = options.type || 'assign';
+        pendingBlockContext = context;
+
+        let firstName = '';
+        let lastName = '';
+
+        if (context === 'assign') {
+            firstName = currentApplicant?.vorname || '';
+            lastName = currentApplicant?.nachname || '';
+        } else {
+            const payload = options.payload || pendingApplicantPayload || {};
+            firstName = payload?.vorname || '';
+            lastName = payload?.nachname || '';
+        }
+
         const displayName = [lastName, firstName].filter(Boolean).join(', ');
-        let message = 'Der ausgewählte Bewerber steht auf der Sperrliste.';
+        let message = context === 'assign'
+            ? 'Der ausgewählte Bewerber steht auf der Sperrliste.'
+            : 'Der Bewerber steht auf der Sperrliste.';
+
         if (displayName) {
             message = `Der Bewerber ${displayName} steht auf der Sperrliste.`;
         }
+
         if (entry && entry.lizenznummer) {
             message += ` Lizenznummer: ${entry.lizenznummer}.`;
         }
-        message += ' Möchtest du trotzdem fortfahren?';
+
+        message += context === 'assign'
+            ? ' Möchtest du trotzdem fortfahren?'
+            : ' Möchtest du den Bewerber trotzdem speichern?';
+
+        const confirmLabel = context === 'assign' ? 'Trotzdem speichern' : 'Trotzdem speichern';
 
         if (!blockWarningModal || !blockWarningText || !confirmBlockOverride) {
             if (window.confirm(message)) {
-                submitAssignment(pendingAssignmentPayload, true);
+                if (context === 'assign' && pendingAssignmentPayload) {
+                    pendingBlockContext = null;
+                    submitAssignment(pendingAssignmentPayload, true);
+                } else if (context === 'applicant' && pendingApplicantPayload && pendingApplicantAction) {
+                    pendingBlockContext = null;
+                    submitApplicant(pendingApplicantAction, pendingApplicantPayload, true);
+                }
             } else {
-                pendingAssignmentPayload = null;
+                clearPendingBlockState();
             }
             return;
         }
 
         blockWarningText.textContent = message;
+        confirmBlockOverride.textContent = confirmLabel;
         showModal(blockWarningModal);
     }
 
@@ -271,7 +299,7 @@
 
     function closeBlockWarning() {
         hideBlockWarning();
-        pendingAssignmentPayload = null;
+        clearPendingBlockState();
     }
 
     function openAssignModal(applicant, row) {
@@ -291,6 +319,53 @@
         showModal(assignModal);
         assignFields.type.dispatchEvent(new Event('change'));
         assignFields.year.dispatchEvent(new Event('change'));
+    }
+
+    function submitApplicant(action, payload, force) {
+        const requestBody = { ...payload, force };
+        fetch(`api.php?action=${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(result => handleApplicantResult(action, result, payload, force))
+            .catch(() => {
+                pendingApplicantPayload = null;
+                pendingApplicantAction = null;
+                pendingBlockContext = null;
+                alert('Neuwerber konnte nicht gespeichert werden.');
+            });
+    }
+
+    function handleApplicantResult(action, result, payload, force) {
+        if (result.success && result.bewerber) {
+            pendingApplicantPayload = null;
+            pendingApplicantAction = null;
+            pendingBlockContext = null;
+
+            if (action === 'update_newcomer' && editingApplicantId && editingRow) {
+                updateApplicantRow(editingRow, result.bewerber);
+            } else {
+                addApplicantRow(result.bewerber);
+                adjustNewcomerCount(1);
+            }
+            hideModal(addModal);
+            return;
+        }
+
+        if (result.blocked && !force) {
+            pendingApplicantPayload = payload;
+            pendingApplicantAction = action;
+            pendingBlockContext = 'applicant';
+            showBlockWarning(result.entry, { type: 'applicant', payload });
+            return;
+        }
+
+        pendingApplicantPayload = null;
+        pendingApplicantAction = null;
+        pendingBlockContext = null;
+        alert(result.message || 'Neuwerber konnte nicht gespeichert werden.');
     }
 
     function openAddModal() {
@@ -323,6 +398,13 @@
             editingApplicantId = null;
             editingRow = null;
         }
+    }
+
+    function clearPendingBlockState() {
+        pendingAssignmentPayload = null;
+        pendingApplicantPayload = null;
+        pendingApplicantAction = null;
+        pendingBlockContext = null;
     }
 
     function openEditModal(applicant, row) {

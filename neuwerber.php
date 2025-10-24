@@ -202,8 +202,8 @@ $prices = get_license_prices($currentYear);
         </header>
         <p id="assignBlockWarningText">Der ausgewählte Bewerber steht auf der Sperrliste.</p>
         <footer class="modal-footer">
-            <button type="button" class="secondary" id="cancelAssignBlockWarning">Abbrechen</button>
-            <button type="button" class="primary" id="confirmAssignBlockOverride">Fortfahren</button>
+            <button type="button" class="secondary" id="cancelAssignBlockWarning">Zurück</button>
+            <button type="button" class="primary" id="confirmAssignBlockOverride">Trotzdem speichern</button>
         </footer>
     </div>
 </div>
