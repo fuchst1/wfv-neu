@@ -50,8 +50,16 @@
     let currentLicense = null;
     let pendingBlockPayload = null;
 
+    if (!licenseModal || !licenseForm) {
+        return;
+    }
+
     Validation.attach(licenseForm);
-    Validation.attach(document.getElementById('extendForm'));
+
+    const extendForm = document.getElementById('extendForm');
+    if (extendForm) {
+        Validation.attach(extendForm);
+    }
     if (createYearForm) {
         Validation.attach(createYearForm);
     }
@@ -83,9 +91,12 @@
         });
     }
 
-    document.getElementById('openAddLicense').addEventListener('click', () => {
-        openLicenseModal(null);
-    });
+    const addLicenseButton = document.getElementById('openAddLicense');
+    if (addLicenseButton) {
+        addLicenseButton.addEventListener('click', () => {
+            openLicenseModal(null);
+        });
+    }
 
     if (createYearButton) {
         createYearButton.addEventListener('click', () => {
@@ -96,9 +107,19 @@
 
     document.querySelectorAll('tbody tr[data-license]').forEach(row => {
         const data = JSON.parse(row.dataset.license);
-        row.querySelector('.edit').addEventListener('click', () => openLicenseModal(data, row));
-        row.querySelector('.delete').addEventListener('click', () => openDeleteModal(data, row));
-        row.querySelector('.extend').addEventListener('click', () => openExtendModal(data, row));
+        const editButton = row.querySelector('.edit');
+        const deleteButton = row.querySelector('.delete');
+        const extendButton = row.querySelector('.extend');
+
+        if (editButton) {
+            editButton.addEventListener('click', () => openLicenseModal(data, row));
+        }
+        if (deleteButton) {
+            deleteButton.addEventListener('click', () => openDeleteModal(data, row));
+        }
+        if (extendButton) {
+            extendButton.addEventListener('click', () => openExtendModal(data, row));
+        }
     });
 
     if (typeof OPEN_LICENSE_MODAL !== 'undefined' && OPEN_LICENSE_MODAL) {
@@ -111,24 +132,35 @@
         }
     }
 
-    licenseFields.tip.addEventListener('input', updateTotal);
-    licenseFields.cost.addEventListener('input', updateTotal);
-    extendFields.tip.addEventListener('input', updateExtendTotal);
-    extendFields.cost.addEventListener('input', updateExtendTotal);
+    if (licenseFields.tip) {
+        licenseFields.tip.addEventListener('input', updateTotal);
+    }
+    if (licenseFields.cost) {
+        licenseFields.cost.addEventListener('input', updateTotal);
+    }
+    if (extendFields.tip) {
+        extendFields.tip.addEventListener('input', updateExtendTotal);
+    }
+    if (extendFields.cost) {
+        extendFields.cost.addEventListener('input', updateExtendTotal);
+    }
 
-    licenseFields.type.addEventListener('change', event => {
-        const type = event.target.value;
-        if (LICENSE_PRICES[type]) {
-            licenseFields.cost.value = Number(LICENSE_PRICES[type]).toFixed(2);
-        }
-        toggleBoat(type === 'Boot');
-        updateTotal();
-    });
+    if (licenseFields.type) {
+        licenseFields.type.addEventListener('change', event => {
+            const type = event.target.value;
+            if (LICENSE_PRICES[type]) {
+                licenseFields.cost.value = Number(LICENSE_PRICES[type]).toFixed(2);
+            }
+            toggleBoat(type === 'Boot');
+            updateTotal();
+        });
+    }
 
-    extendFields.year.addEventListener('change', event => {
-        const year = event.target.value;
-        if (!year) return;
-        fetch(`api.php?action=get_prices&year=${year}`)
+    if (extendFields.year) {
+        extendFields.year.addEventListener('change', event => {
+            const year = event.target.value;
+            if (!year) return;
+            fetch(`api.php?action=get_prices&year=${year}`)
             .then(r => r.json())
             .then(result => {
                 if (result.success && currentLicense) {
@@ -139,38 +171,44 @@
                     }
                 }
             });
-    });
+        });
+    }
 
-    document.getElementById('licenseeSelect').addEventListener('change', event => {
-        const option = event.target.selectedOptions[0];
-        if (!option) return;
-        if (!option.value) {
-            resetLicenseeFields();
-            licenseFields.licenseeId.value = '';
-            return;
-        }
-        licenseFields.licenseeId.value = option.value;
-        licenseFields.firstName.value = option.dataset.vorname || '';
-        licenseFields.lastName.value = option.dataset.nachname || '';
-        licenseFields.street.value = option.dataset.strasse || '';
-        licenseFields.zip.value = option.dataset.plz || '';
-        licenseFields.city.value = option.dataset.ort || '';
-        licenseFields.phone.value = option.dataset.telefon || '';
-        licenseFields.email.value = option.dataset.email || '';
-        licenseFields.card.value = option.dataset.karte || '';
-    });
+    const licenseeSelect = document.getElementById('licenseeSelect');
+    if (licenseeSelect) {
+        licenseeSelect.addEventListener('change', event => {
+            const option = event.target.selectedOptions[0];
+            if (!option) return;
+            if (!option.value) {
+                resetLicenseeFields();
+                licenseFields.licenseeId.value = '';
+                return;
+            }
+            licenseFields.licenseeId.value = option.value;
+            licenseFields.firstName.value = option.dataset.vorname || '';
+            licenseFields.lastName.value = option.dataset.nachname || '';
+            licenseFields.street.value = option.dataset.strasse || '';
+            licenseFields.zip.value = option.dataset.plz || '';
+            licenseFields.city.value = option.dataset.ort || '';
+            licenseFields.phone.value = option.dataset.telefon || '';
+            licenseFields.email.value = option.dataset.email || '';
+            licenseFields.card.value = option.dataset.karte || '';
+        });
+    }
 
-    licenseFields.zip.addEventListener('blur', event => {
-        const value = event.target.value.trim();
-        if (!value) return;
-        fetch(`api.php?action=lookup_zip&plz=${encodeURIComponent(value)}`)
-            .then(r => r.json())
-            .then(result => {
-                if (result.success && result.ort) {
-                    licenseFields.city.value = result.ort;
-                }
-            });
-    });
+    if (licenseFields.zip) {
+        licenseFields.zip.addEventListener('blur', event => {
+            const value = event.target.value.trim();
+            if (!value) return;
+            fetch(`api.php?action=lookup_zip&plz=${encodeURIComponent(value)}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success && result.ort) {
+                        licenseFields.city.value = result.ort;
+                    }
+                });
+        });
+    }
 
     licenseForm.addEventListener('submit', event => {
         event.preventDefault();
@@ -180,51 +218,56 @@
         submitLicensePayload(payload, false);
     });
 
-    document.getElementById('confirmDelete').addEventListener('click', () => {
-        if (!currentLicense) return;
-        fetch('api.php?action=delete_license', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ year: CURRENT_YEAR, license_id: currentLicense.lizenz_id })
-        })
-            .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    window.location.reload();
-                } else {
-                    alert(result.message || 'Löschen fehlgeschlagen');
-                }
+    const confirmDeleteButton = document.getElementById('confirmDelete');
+    if (confirmDeleteButton) {
+        confirmDeleteButton.addEventListener('click', () => {
+            if (!currentLicense) return;
+            fetch('api.php?action=delete_license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year: CURRENT_YEAR, license_id: currentLicense.lizenz_id })
             })
-            .catch(() => alert('Löschen fehlgeschlagen'));
-    });
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        window.location.reload();
+                    } else {
+                        alert(result.message || 'Löschen fehlgeschlagen');
+                    }
+                })
+                .catch(() => alert('Löschen fehlgeschlagen'));
+        });
+    }
 
-    document.getElementById('extendForm').addEventListener('submit', event => {
-        event.preventDefault();
-        const toYear = parseInt(extendFields.year.value, 10);
-        if (!toYear) return;
-        fetch('api.php?action=move_license', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                from_year: CURRENT_YEAR,
-                to_year: toYear,
-                license_id: currentLicense.lizenz_id,
-                kosten: extendFields.cost.value,
-                trinkgeld: extendFields.tip.value || 0,
-                zahlungsdatum: extendFields.date.value,
-                notizen: extendFields.notes.value
+    if (extendForm) {
+        extendForm.addEventListener('submit', event => {
+            event.preventDefault();
+            const toYear = parseInt(extendFields.year.value, 10);
+            if (!toYear) return;
+            fetch('api.php?action=move_license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from_year: CURRENT_YEAR,
+                    to_year: toYear,
+                    license_id: currentLicense.lizenz_id,
+                    kosten: extendFields.cost.value,
+                    trinkgeld: extendFields.tip.value || 0,
+                    zahlungsdatum: extendFields.date.value,
+                    notizen: extendFields.notes.value
+                })
             })
-        })
-            .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    window.location.href = `?jahr=${toYear}`;
-                } else {
-                    alert(result.message || 'Verlängerung fehlgeschlagen');
-                }
-            })
-            .catch(() => alert('Verlängerung fehlgeschlagen'));
-    });
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        window.location.href = `?jahr=${toYear}`;
+                    } else {
+                        alert(result.message || 'Verlängerung fehlgeschlagen');
+                    }
+                })
+                .catch(() => alert('Verlängerung fehlgeschlagen'));
+        });
+    }
 
     if (createYearForm) {
         createYearForm.addEventListener('submit', event => {
@@ -270,7 +313,9 @@
     function openDeleteModal(data, row) {
         currentRow = row;
         currentLicense = data;
-        deleteModal.hidden = false;
+        if (deleteModal) {
+            deleteModal.hidden = false;
+        }
     }
 
     function openExtendModal(data, row) {
@@ -282,7 +327,9 @@
         extendFields.total.value = (parseFloat(extendFields.cost.value || 0) + parseFloat(extendFields.tip.value || 0)).toFixed(2);
         extendFields.date.value = '';
         extendFields.notes.value = '';
-        extendModal.hidden = false;
+        if (extendModal) {
+            extendModal.hidden = false;
+        }
     }
 
     function resetLicenseForm() {
