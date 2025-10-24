@@ -540,18 +540,19 @@ function delete_year(): void
 
     $pdo = get_pdo();
     $licenseTable = license_table($year);
+    $quotedLicenseTable = sprintf('`%s`', str_replace('`', '``', $licenseTable));
 
-    $pdo->beginTransaction();
+    $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
     try {
-        $pdo->exec("DROP TABLE IF EXISTS {$licenseTable}");
-        $stmt = $pdo->prepare('DELETE FROM lizenzpreise WHERE jahr = :jahr');
-        $stmt->execute(['jahr' => $year]);
-        $pdo->commit();
-        echo json_encode(['success' => true]);
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        throw $e;
+        $pdo->exec("DROP TABLE IF EXISTS {$quotedLicenseTable}");
+    } finally {
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
     }
+
+    $stmt = $pdo->prepare('DELETE FROM lizenzpreise WHERE jahr = :jahr');
+    $stmt->execute(['jahr' => $year]);
+
+    echo json_encode(['success' => true]);
 }
 
 function get_prices(): void
