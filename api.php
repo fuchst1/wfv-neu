@@ -493,6 +493,11 @@ function create_year(): void
         return;
     }
 
+    if (in_array($year, available_years(), true)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr existiert bereits.']);
+        return;
+    }
+
     ensure_year_exists($year);
 
     $pdo = get_pdo();
