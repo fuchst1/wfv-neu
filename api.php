@@ -924,8 +924,23 @@ function validate_birthdate_input($value, string $fieldLabel = 'Geburtsdatum'): 
         return ['value' => null, 'error' => null];
     }
 
-    $date = DateTimeImmutable::createFromFormat('Y-m-d', $rawValue);
-    if (!$date || $date->format('Y-m-d') !== $rawValue) {
+    $normalizedValue = $rawValue;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalizedValue)) {
+        if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/', $normalizedValue, $matches)) {
+            $day = (int)$matches[1];
+            $month = (int)$matches[2];
+            $year = (int)$matches[3];
+            if (!checkdate($month, $day, $year)) {
+                return ['value' => null, 'error' => $fieldLabel . ' ist ungültig.'];
+            }
+            $normalizedValue = sprintf('%04d-%02d-%02d', $year, $month, $day);
+        } else {
+            return ['value' => null, 'error' => $fieldLabel . ' ist ungültig.'];
+        }
+    }
+
+    $date = DateTimeImmutable::createFromFormat('Y-m-d', $normalizedValue);
+    if (!$date || $date->format('Y-m-d') !== $normalizedValue) {
         return ['value' => null, 'error' => $fieldLabel . ' ist ungültig.'];
     }
 
