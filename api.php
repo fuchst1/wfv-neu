@@ -626,6 +626,7 @@ function assign_newcomer(): void
     $notes = $data['notizen'] ?? null;
 
     $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
+    $force = !empty($data['force']);
     if ($applicantId <= 0 || $year < 2000 || !in_array($type, $allowedTypes, true) || $cost === null || $tip === null) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
@@ -645,7 +646,7 @@ function assign_newcomer(): void
         (string)($applicant['nachname'] ?? ''),
         isset($applicant['fischerkartennummer']) && $applicant['fischerkartennummer'] !== '' ? (string)$applicant['fischerkartennummer'] : null
     );
-    if ($blockedEntry) {
+    if ($blockedEntry && !$force) {
         echo json_encode([
             'success' => false,
             'blocked' => true,

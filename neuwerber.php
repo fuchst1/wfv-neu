@@ -194,6 +194,20 @@ $prices = get_license_prices($currentYear);
     </div>
 </div>
 
+<div class="modal" id="assignBlockWarningModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Auf Sperrliste</h2>
+            <button class="close" type="button" id="closeAssignBlockWarning">&times;</button>
+        </header>
+        <p id="assignBlockWarningText">Der ausgewählte Bewerber steht auf der Sperrliste.</p>
+        <footer class="modal-footer">
+            <button type="button" class="secondary" id="cancelAssignBlockWarning">Abbrechen</button>
+            <button type="button" class="primary" id="confirmAssignBlockOverride">Fortfahren</button>
+        </footer>
+    </div>
+</div>
+
 <script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const LICENSE_PRICES = <?= json_encode($prices) ?>;</script>
 <script src="assets/js/validation.js"></script>
 <script src="assets/js/table-search.js"></script>

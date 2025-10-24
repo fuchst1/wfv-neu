@@ -9,6 +9,11 @@
     const tableBody = table ? table.tBodies[0] : null;
     const addModalTitle = addModal ? addModal.querySelector('h2') : null;
     const addSubmitButton = addForm ? addForm.querySelector('button[type="submit"]') : null;
+    const blockWarningModal = document.getElementById('assignBlockWarningModal');
+    const blockWarningText = document.getElementById('assignBlockWarningText');
+    const confirmBlockOverride = document.getElementById('confirmAssignBlockOverride');
+    const cancelBlockWarning = document.getElementById('cancelAssignBlockWarning');
+    const closeBlockWarningButton = document.getElementById('closeAssignBlockWarning');
 
     if (!assignModal || !assignForm) {
         return;
@@ -41,6 +46,7 @@
     let currentRow = null;
     let editingApplicantId = null;
     let editingRow = null;
+    let pendingAssignmentPayload = null;
     const priceCache = {};
 
     if (typeof LICENSE_PRICES === 'object') {
@@ -58,6 +64,29 @@
             hideModal(modal);
         });
     });
+
+    if (cancelBlockWarning) {
+        cancelBlockWarning.addEventListener('click', () => {
+            closeBlockWarning();
+        });
+    }
+
+    if (closeBlockWarningButton) {
+        closeBlockWarningButton.addEventListener('click', () => {
+            closeBlockWarning();
+        });
+    }
+
+    if (confirmBlockOverride) {
+        confirmBlockOverride.addEventListener('click', () => {
+            if (!pendingAssignmentPayload) {
+                closeBlockWarning();
+                return;
+            }
+            hideBlockWarning();
+            submitAssignment(pendingAssignmentPayload, true);
+        });
+    }
 
     if (addButton && addForm && addModal && addFields) {
         addButton.addEventListener('click', () => openAddModal());
@@ -169,27 +198,81 @@
             notizen: assignFields.notes.value,
         };
 
+        submitAssignment(payload, false);
+    });
+
+    function submitAssignment(payload, force) {
+        const requestBody = { ...payload, force };
         fetch('api.php?action=assign_newcomer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(requestBody)
         })
             .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    if (currentRow) {
-                        currentRow.remove();
-                        adjustNewcomerCount(-1);
-                        checkEmptyTable();
-                        refreshTableSearch();
-                    }
-                    hideModal(assignModal);
-                } else {
-                    alert(result.message || 'Lizenz konnte nicht zugewiesen werden.');
-                }
-            })
-            .catch(() => alert('Lizenz konnte nicht zugewiesen werden.'));
-    });
+            .then(result => handleAssignmentResult(result, payload, force))
+            .catch(() => {
+                pendingAssignmentPayload = null;
+                alert('Lizenz konnte nicht zugewiesen werden.');
+            });
+    }
+
+    function handleAssignmentResult(result, payload, force) {
+        if (result.success) {
+            pendingAssignmentPayload = null;
+            if (currentRow) {
+                currentRow.remove();
+                adjustNewcomerCount(-1);
+                checkEmptyTable();
+                refreshTableSearch();
+            }
+            hideModal(assignModal);
+            return;
+        }
+
+        if (result.blocked && !force) {
+            pendingAssignmentPayload = payload;
+            showBlockWarning(result.entry);
+            return;
+        }
+
+        pendingAssignmentPayload = null;
+        alert(result.message || 'Lizenz konnte nicht zugewiesen werden.');
+    }
+
+    function showBlockWarning(entry) {
+        const firstName = currentApplicant?.vorname || '';
+        const lastName = currentApplicant?.nachname || '';
+        const displayName = [lastName, firstName].filter(Boolean).join(', ');
+        let message = 'Der ausgewählte Bewerber steht auf der Sperrliste.';
+        if (displayName) {
+            message = `Der Bewerber ${displayName} steht auf der Sperrliste.`;
+        }
+        if (entry && entry.lizenznummer) {
+            message += ` Lizenznummer: ${entry.lizenznummer}.`;
+        }
+        message += ' Möchtest du trotzdem fortfahren?';
+
+        if (!blockWarningModal || !blockWarningText || !confirmBlockOverride) {
+            if (window.confirm(message)) {
+                submitAssignment(pendingAssignmentPayload, true);
+            } else {
+                pendingAssignmentPayload = null;
+            }
+            return;
+        }
+
+        blockWarningText.textContent = message;
+        showModal(blockWarningModal);
+    }
+
+    function hideBlockWarning() {
+        hideElement(blockWarningModal);
+    }
+
+    function closeBlockWarning() {
+        hideBlockWarning();
+        pendingAssignmentPayload = null;
+    }
 
     function openAssignModal(applicant, row) {
         currentApplicant = applicant;
