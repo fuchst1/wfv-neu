@@ -329,7 +329,7 @@
         extendFields.cost.value = Number.isFinite(baseCost) ? baseCost.toFixed(2) : Number(0).toFixed(2);
         extendFields.tip.value = Number(0).toFixed(2);
         updateExtendTotal();
-        extendFields.date.value = '';
+        extendFields.date.value = getTodayDateString();
         extendFields.notes.value = '';
         if (extendModal) {
             extendModal.hidden = false;
