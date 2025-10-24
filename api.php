@@ -463,6 +463,12 @@ function move_license(): void
         return;
     }
 
+    $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
+    $type = $data['lizenztyp'] ?? $row['lizenztyp'];
+    if (!in_array($type, $allowedTypes, true)) {
+        $type = $row['lizenztyp'];
+    }
+
     $gesamt = (float)$data['kosten'] + (float)$data['trinkgeld'];
 
     $pdo->beginTransaction();
@@ -470,7 +476,7 @@ function move_license(): void
         $stmt = $pdo->prepare("INSERT INTO {$toTable} (lizenznehmer_id, lizenztyp, kosten, trinkgeld, gesamt, zahlungsdatum, notizen) VALUES (:licensee_id, :typ, :kosten, :trinkgeld, :gesamt, :datum, :notizen)");
         $stmt->execute([
             'licensee_id' => $row['lizenznehmer_id'],
-            'typ' => $row['lizenztyp'],
+            'typ' => $type,
             'kosten' => $data['kosten'],
             'trinkgeld' => $data['trinkgeld'],
             'gesamt' => $gesamt,

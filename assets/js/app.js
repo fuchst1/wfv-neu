@@ -34,6 +34,7 @@
 
     const extendFields = {
         year: document.getElementById('extendYear'),
+        type: document.getElementById('extendType'),
         cost: document.getElementById('extendCost'),
         tip: document.getElementById('extendTip'),
         total: document.getElementById('extendTotal'),
@@ -159,20 +160,14 @@
     }
 
     if (extendFields.year) {
-        extendFields.year.addEventListener('change', event => {
-            const year = event.target.value;
-            if (!year) return;
-            fetch(`api.php?action=get_prices&year=${year}`)
-            .then(r => r.json())
-            .then(result => {
-                if (result.success && currentLicense) {
-                    const type = currentLicense.lizenztyp;
-                    if (result.preise[type]) {
-                        extendFields.cost.value = Number(result.preise[type]).toFixed(2);
-                        updateExtendTotal();
-                    }
-                }
-            });
+        extendFields.year.addEventListener('change', () => {
+            updateExtendPricing();
+        });
+    }
+
+    if (extendFields.type) {
+        extendFields.type.addEventListener('change', () => {
+            updateExtendPricing();
         });
     }
 
@@ -231,6 +226,7 @@
                     from_year: CURRENT_YEAR,
                     to_year: toYear,
                     license_id: currentLicense.lizenz_id,
+                    lizenztyp: extendFields.type ? extendFields.type.value || currentLicense.lizenztyp : currentLicense.lizenztyp,
                     kosten: extendFields.cost.value,
                     trinkgeld: extendFields.tip.value || 0,
                     zahlungsdatum: extendFields.date.value,
@@ -322,6 +318,9 @@
             yearField.disabled = optionElements.length === 0;
             yearField.value = defaultYear;
         }
+        if (extendFields.type) {
+            extendFields.type.value = data.lizenztyp || '';
+        }
         if (extendSubmitButton) {
             extendSubmitButton.disabled = optionElements.length === 0;
         }
@@ -335,7 +334,7 @@
             extendModal.hidden = false;
         }
         if (defaultYear && yearField) {
-            yearField.dispatchEvent(new Event('change'));
+            updateExtendPricing();
         }
         if (!optionElements.length) {
             alert('Kein Zieljahr vorhanden. Bitte neues Jahr im Adminbereich anlegen.');
@@ -385,6 +384,31 @@
         const cost = parseFloat(licenseFields.cost.value || '0');
         const tip = parseFloat(licenseFields.tip.value || '0');
         licenseFields.total.value = (cost + tip).toFixed(2);
+    }
+
+    function updateExtendPricing() {
+        if (!extendFields.year || !extendFields.type) {
+            return;
+        }
+        const year = extendFields.year.value;
+        const type = extendFields.type.value;
+        if (!year || !type) {
+            return;
+        }
+        fetch(`api.php?action=get_prices&year=${year}`)
+            .then(r => r.json())
+            .then(result => {
+                if (!result.success) {
+                    return;
+                }
+                const price = result.preise && result.preise[type];
+                if (typeof price === 'number') {
+                    extendFields.cost.value = Number(price).toFixed(2);
+                } else {
+                    extendFields.cost.value = Number(0).toFixed(2);
+                }
+                updateExtendTotal();
+            });
     }
 
     function updateExtendTotal() {
