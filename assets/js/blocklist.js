@@ -17,6 +17,7 @@
         firstName: document.getElementById('blocklistFirstName'),
         lastName: document.getElementById('blocklistLastName'),
         licenseNumber: document.getElementById('blocklistLicenseNumber'),
+        note: document.getElementById('blocklistNote'),
     };
 
     let currentEntry = null;
@@ -61,6 +62,7 @@
             vorname: fields.firstName.value.trim(),
             nachname: fields.lastName.value.trim(),
             lizenznummer: fields.licenseNumber.value.trim(),
+            notiz: fields.note.value.trim(),
         };
 
         fetch('api.php?action=save_block_entry', {
@@ -135,6 +137,7 @@
         fields.firstName.value = entry.vorname || '';
         fields.lastName.value = entry.nachname || '';
         fields.licenseNumber.value = entry.lizenznummer || '';
+        fields.note.value = entry.notiz || '';
         if (modalTitle) {
             modalTitle.textContent = 'Person bearbeiten';
         }
@@ -160,6 +163,7 @@
         fields.firstName.value = '';
         fields.lastName.value = '';
         fields.licenseNumber.value = '';
+        fields.note.value = '';
         form.querySelectorAll('.validation-hint').forEach(hint => {
             hint.textContent = '';
         });

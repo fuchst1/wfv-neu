@@ -56,13 +56,14 @@ $blocklistEntries = get_blocklist_entries();
                     <th>Nachname</th>
                     <th>Vorname</th>
                     <th>Lizenznummer</th>
+                    <th>Notiz</th>
                     <th>Aktionen</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (!$blocklistEntries): ?>
                 <tr data-empty-row>
-                    <td colspan="4" class="empty">Keine Einträge auf der Sperrliste vorhanden.</td>
+                    <td colspan="5" class="empty">Keine Einträge auf der Sperrliste vorhanden.</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($blocklistEntries as $entry): ?>
@@ -72,12 +73,14 @@ $blocklistEntries = get_blocklist_entries();
                             'vorname' => $entry['vorname'],
                             'nachname' => $entry['nachname'],
                             'lizenznummer' => $entry['lizenznummer'] ?? null,
+                            'notiz' => $entry['notiz'] ?? null,
                         ];
                     ?>
                     <tr data-entry='<?= json_encode($entryData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
                         <td><?= htmlspecialchars($entry['nachname']) ?></td>
                         <td><?= htmlspecialchars($entry['vorname']) ?></td>
                         <td><?= htmlspecialchars($entry['lizenznummer'] ?? '–') ?></td>
+                        <td><?= $entry['notiz'] ? nl2br(htmlspecialchars($entry['notiz'])) : '–' ?></td>
                         <td class="actions">
                             <button type="button" class="secondary edit">Bearbeiten</button>
                             <button type="button" class="danger delete">Löschen</button>
@@ -110,6 +113,10 @@ $blocklistEntries = get_blocklist_entries();
                     </label>
                     <label>Lizenznummer
                         <input type="text" id="blocklistLicenseNumber">
+                    </label>
+                    <label>
+                        <span class="label-title">Notiz</span>
+                        <textarea id="blocklistNote" rows="3" placeholder="Grund für die Sperre …"></textarea>
                     </label>
                 </div>
             </section>
