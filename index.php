@@ -181,19 +181,24 @@ $yearOverview = get_year_overview($currentYear);
                     <?php endforeach; ?>
                 </select>
                 <div class="form-grid">
-                    <label>Vorname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Vorname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="vorname" data-validate="required" required>
                     </label>
-                    <label>Nachname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Nachname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="nachname" data-validate="required" required>
                     </label>
-                    <label>Straße <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Straße <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="strasse" data-validate="required" required>
                     </label>
-                    <label>PLZ <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">PLZ <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="plz" data-validate="required,zip" required>
                     </label>
-                    <label>Ort <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Ort <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="ort" data-validate="required" required>
                     </label>
                     <label>Telefon
@@ -202,7 +207,8 @@ $yearOverview = get_year_overview($currentYear);
                     <label>E-Mail
                         <input type="email" id="email" data-validate="email">
                     </label>
-                    <label>Fischerkartennummer <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Fischerkartennummer <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="fischerkartennummer" data-validate="required" required>
                     </label>
                 </div>

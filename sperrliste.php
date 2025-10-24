@@ -100,10 +100,12 @@ $blocklistEntries = get_blocklist_entries();
             <input type="hidden" id="blocklistId">
             <section class="form-section">
                 <div class="form-grid">
-                    <label>Vorname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Vorname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="blocklistFirstName" data-validate="required" required>
                     </label>
-                    <label>Nachname <span aria-hidden="true">*</span>
+                    <label>
+                        <span class="label-title">Nachname <span class="required-indicator" aria-hidden="true">*</span></span>
                         <input type="text" id="blocklistLastName" data-validate="required" required>
                     </label>
                     <label>Lizenznummer
