@@ -365,10 +365,23 @@ function get_boat_licenses(): void
     ensure_boats_table_exists();
     $boatsTable = boats_table();
 
-    $sql = "SELECT ln.id, ln.vorname, ln.nachname, ln.telefon, ln.email,
+    $yearParam = $_GET['jahr'] ?? $_POST['jahr'] ?? null;
+    $year = $yearParam !== null && $yearParam !== '' ? (int)$yearParam : null;
+    if (!$year) {
+        $year = latest_year();
+    }
+    if (!$year) {
+        $year = (int)date('Y');
+    }
+
+    ensure_year_exists($year);
+    $licenseTable = license_table($year);
+
+    $sql = "SELECT DISTINCT ln.id, ln.vorname, ln.nachname, ln.telefon, ln.email,
                    (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boat_id,
                    (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer
-            FROM lizenznehmer ln
+            FROM {$licenseTable} l
+            JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
             ORDER BY ln.nachname, ln.vorname, ln.id";
 
     $stmt = $pdo->query($sql);

@@ -25,7 +25,7 @@ $boats = get_boats_overview();
     <title>Bootsübersicht · Wörderner Fischereiverein</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
+<body data-current-year="<?= (int)$currentYear ?>">
 <header class="app-header">
     <div class="branding">
         <h1>Bootsübersicht</h1>
