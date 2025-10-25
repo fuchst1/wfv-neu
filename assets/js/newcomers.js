@@ -40,6 +40,7 @@
         ageHint: document.getElementById('assignAgeHint'),
         ageWarning: document.getElementById('assignAgeWarning'),
     };
+    const DEFAULT_ASSIGN_YEAR = typeof LATEST_YEAR === 'number' ? String(LATEST_YEAR) : '';
 
     const addFields = addForm ? {
         firstName: document.getElementById('applicantFirstName'),
@@ -169,41 +170,53 @@
         populateActionCell(row.querySelector('td.actions'), row);
     });
 
-    assignFields.tip.addEventListener('input', updateTotal);
-    assignFields.cost.addEventListener('input', updateTotal);
+    if (assignFields.tip) {
+        assignFields.tip.addEventListener('input', updateTotal);
+    }
+    if (assignFields.cost) {
+        assignFields.cost.addEventListener('input', updateTotal);
+    }
 
-    assignFields.type.addEventListener('change', () => {
-        const year = assignFields.year.value;
-        const type = assignFields.type.value;
-        const prices = priceCache[year];
-        if (prices && prices[type]) {
-            assignFields.cost.value = Number(prices[type]).toFixed(2);
-        }
-        updateTotal();
-        updateAssignAgeInfo();
-    });
-
-    assignFields.year.addEventListener('change', event => {
-        const year = event.target.value;
-        if (!year) return;
-        if (priceCache[year]) {
-            updatePriceSuggestion();
+    if (assignFields.type) {
+        assignFields.type.addEventListener('change', () => {
+            const year = assignFields.year ? assignFields.year.value : '';
+            const type = assignFields.type.value;
+            const prices = priceCache[year];
+            if (prices && prices[type]) {
+                assignFields.cost.value = Number(prices[type]).toFixed(2);
+            }
+            updateTotal();
             updateAssignAgeInfo();
-            return;
-        }
-        fetch(`api.php?action=get_prices&year=${year}`)
-            .then(r => r.json())
-            .then(result => {
-                if (result.success) {
-                    priceCache[year] = result.preise || {};
-                    updatePriceSuggestion();
-                    updateAssignAgeInfo();
-                }
-            });
-    });
+        });
+    }
+
+    if (assignFields.year) {
+        assignFields.year.addEventListener('change', event => {
+            const year = event.target.value;
+            if (!year) return;
+            if (priceCache[year]) {
+                updatePriceSuggestion();
+                updateAssignAgeInfo();
+                return;
+            }
+            fetch(`api.php?action=get_prices&year=${year}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        priceCache[year] = result.preise || {};
+                        updatePriceSuggestion();
+                        updateAssignAgeInfo();
+                    }
+                });
+        });
+    }
 
     assignForm.addEventListener('submit', event => {
         event.preventDefault();
+        if (!assignFields.year || assignFields.year.disabled || !assignFields.year.value) {
+            alert('Kein Jahr vorhanden. Bitte neues Jahr im Adminbereich anlegen.');
+            return;
+        }
         if (!Validation.validateInput(assignFields.year) || !Validation.validateInput(assignFields.type) || !Validation.validateInput(assignFields.cost)) {
             return;
         }
@@ -333,18 +346,41 @@
         assignForm.reset();
         clearValidation(assignForm);
 
-        assignFields.year.value = CURRENT_YEAR;
-        assignFields.type.value = 'Angel';
-        assignFields.cost.value = '';
-        assignFields.tip.value = '0.00';
-        assignFields.total.value = '0.00';
-        assignFields.date.value = getTodayDateString();
-        assignFields.notes.value = applicant.notizen || '';
+        if (assignFields.year) {
+            if (DEFAULT_ASSIGN_YEAR) {
+                assignFields.year.value = DEFAULT_ASSIGN_YEAR;
+            } else {
+                const defaultOption = Array.from(assignFields.year.options || []).find(option => option.defaultSelected);
+                assignFields.year.value = defaultOption ? defaultOption.value : assignFields.year.value;
+            }
+        }
+        if (assignFields.type) {
+            assignFields.type.value = 'Angel';
+        }
+        if (assignFields.cost) {
+            assignFields.cost.value = '';
+        }
+        if (assignFields.tip) {
+            assignFields.tip.value = '0.00';
+        }
+        if (assignFields.total) {
+            assignFields.total.value = '0.00';
+        }
+        if (assignFields.date) {
+            assignFields.date.value = getTodayDateString();
+        }
+        if (assignFields.notes) {
+            assignFields.notes.value = applicant.notizen || '';
+        }
 
         updateAssignAgeInfo();
         showModal(assignModal);
-        assignFields.type.dispatchEvent(new Event('change'));
-        assignFields.year.dispatchEvent(new Event('change'));
+        if (assignFields.type) {
+            assignFields.type.dispatchEvent(new Event('change'));
+        }
+        if (assignFields.year && assignFields.year.value) {
+            assignFields.year.dispatchEvent(new Event('change'));
+        }
     }
 
     function submitApplicant(action, payload, force) {
