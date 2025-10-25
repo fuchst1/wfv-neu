@@ -39,4 +39,5 @@ if ($yearDisplayLimit !== null && $yearDisplayLimit > 0 && count($displayYears) 
     <a class="button-link<?= $currentPage === 'neuwerber' ? ' active' : '' ?>" href="neuwerber.php">Neuwerber</a>
     <a class="button-link<?= $currentPage === 'boats' ? ' active' : '' ?>" href="boats.php">Bootsübersicht</a>
     <a class="button-link<?= $currentPage === 'blocklist' ? ' active' : '' ?>" href="sperrliste.php">Sperrliste</a>
+    <a class="button-link<?= $currentPage === 'admin' ? ' active' : '' ?>" href="admin.php">Admin</a>
 </nav>
