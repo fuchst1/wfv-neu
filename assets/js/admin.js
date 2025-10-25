@@ -13,6 +13,43 @@
 
     let pendingYearDelete = null;
     let pendingYearClose = null;
+    let closeYearInFlight = false;
+
+    function markYearAsClosed(year, closure) {
+        if (!year) {
+            return;
+        }
+
+        const closeButton = document.querySelector(`[data-close-year="${year}"]`);
+        const row = closeButton ? closeButton.closest('tr') : null;
+        if (!row) {
+            return;
+        }
+
+        const statusCell = row.querySelector('td:nth-child(2)');
+        if (statusCell) {
+            statusCell.innerHTML = '';
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-closed';
+            badge.textContent = 'Abgeschlossen';
+            statusCell.appendChild(badge);
+
+            const formattedDate = closure && (closure.abgeschlossen_am_formatted || closure.abgeschlossen_am);
+            if (formattedDate) {
+                statusCell.appendChild(document.createElement('br'));
+                const small = document.createElement('small');
+                small.textContent = `am ${formattedDate}`;
+                statusCell.appendChild(small);
+            }
+        }
+
+        const deleteButton = row.querySelector('[data-delete-year]');
+        [closeButton, deleteButton].forEach(btn => {
+            if (!btn) return;
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+        });
+    }
 
     function closeModals() {
         [createYearModal, deleteYearModal, closeYearModal].forEach(modal => {
@@ -153,6 +190,9 @@
     if (confirmCloseYearButton) {
         confirmCloseYearButton.addEventListener('click', () => {
             if (!pendingYearClose) return;
+            if (closeYearInFlight) return;
+            closeYearInFlight = true;
+            confirmCloseYearButton.disabled = true;
             fetch('api.php?action=close_year', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -161,12 +201,17 @@
                 .then(r => r.json())
                 .then(result => {
                     if (result.success) {
-                        window.location.href = `admin.php?jahr=${pendingYearClose}`;
+                        markYearAsClosed(pendingYearClose, result.closure || null);
+                        closeModals();
                     } else {
                         alert(result.message || 'Jahr konnte nicht abgeschlossen werden');
                     }
                 })
-                .catch(() => alert('Jahr konnte nicht abgeschlossen werden'));
+                .catch(() => alert('Jahr konnte nicht abgeschlossen werden'))
+                .finally(() => {
+                    closeYearInFlight = false;
+                    confirmCloseYearButton.disabled = false;
+                });
         });
     }
 })();

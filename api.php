@@ -651,7 +651,15 @@ function close_year(): void
         'notizen' => $notes,
     ]);
 
-    echo json_encode(['success' => true]);
+    $closure = get_year_closure($year);
+    if ($closure) {
+        $closure['abgeschlossen_am_formatted'] = format_datetime($closure['abgeschlossen_am'] ?? null);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'closure' => $closure,
+    ]);
 }
 
 function get_prices(): void
