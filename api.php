@@ -992,6 +992,12 @@ function assign_newcomer(): void
         return;
     }
 
+    $availableYears = available_years();
+    if (!in_array($year, $availableYears, true)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr existiert nicht. Bitte im Adminbereich anlegen.']);
+        return;
+    }
+
     ensure_year_exists($year);
     ensure_person_birthdate_columns();
     $licenseTable = license_table($year);

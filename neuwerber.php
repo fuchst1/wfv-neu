@@ -14,6 +14,7 @@ if (!$currentYear) {
 
 ensure_year_exists($currentYear);
 $years = available_years();
+$latestYear = $years ? max($years) : null;
 
 $newcomers = get_newcomers();
 $prices = get_license_prices($currentYear);
@@ -176,7 +177,15 @@ $prices = get_license_prices($currentYear);
             <section class="form-section">
                 <div class="form-grid">
                     <label>Jahr
-                        <input type="number" id="assignYear" min="2000" data-validate="required" required>
+                        <select id="assignYear" data-validate="required" required<?= $years ? '' : ' disabled' ?>>
+                            <?php if ($years): ?>
+                                <?php foreach (array_reverse($years) as $yearOption): ?>
+                                    <option value="<?= (int)$yearOption ?>"<?= $latestYear !== null && (int)$yearOption === (int)$latestYear ? ' selected' : '' ?>><?= (int)$yearOption ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="">Kein Jahr verfügbar</option>
+                            <?php endif; ?>
+                        </select>
                     </label>
                     <label>Lizenztyp
                         <select id="assignType" data-validate="required" required>
@@ -202,6 +211,9 @@ $prices = get_license_prices($currentYear);
                     </label>
                 </div>
                 <p class="form-hint" id="assignAgeHint"></p>
+                <?php if (!$years): ?>
+                    <p class="form-hint">Kein Jahr vorhanden. Bitte im Adminbereich anlegen.</p>
+                <?php endif; ?>
                 <p class="form-warning" id="assignAgeWarning" hidden></p>
                 <label>Notizen
                     <textarea id="assignNotes" rows="3"></textarea>
@@ -229,7 +241,11 @@ $prices = get_license_prices($currentYear);
     </div>
 </div>
 
-<script>const CURRENT_YEAR = <?= json_encode($currentYear) ?>; const LICENSE_PRICES = <?= json_encode($prices) ?>;</script>
+<script>
+const CURRENT_YEAR = <?= json_encode($currentYear) ?>;
+const LICENSE_PRICES = <?= json_encode($prices) ?>;
+const LATEST_YEAR = <?= $latestYear !== null ? (int)$latestYear : 'null' ?>;
+</script>
 <script src="assets/js/validation.js"></script>
 <script src="assets/js/table-search.js"></script>
 <script src="assets/js/newcomers.js"></script>
