@@ -47,6 +47,17 @@ $yearClosures = get_year_closures();
     </section>
 
     <section class="table-section">
+        <h3>Lizenznehmer-Suche</h3>
+        <form id="licenseeSearchForm" class="table-search" autocomplete="off">
+            <label class="sr-only" for="licenseeSearchInput">Lizenznehmer suchen</label>
+            <input type="search" id="licenseeSearchInput" name="query" placeholder="Name, Lizenznummer oder Ort" spellcheck="false" aria-describedby="licenseeSearchMessage">
+            <button type="submit" class="primary">Suchen</button>
+        </form>
+        <p id="licenseeSearchMessage" class="search-message">Geben Sie einen Namen ein, um die Suche zu starten.</p>
+        <div id="licenseeSearchResults" class="licensee-results" hidden></div>
+    </section>
+
+    <section class="table-section">
         <h3>Bestehende Jahre</h3>
         <?php if (!$years): ?>
             <p class="empty">Es wurden noch keine Jahre angelegt.</p>
@@ -84,17 +95,6 @@ $yearClosures = get_year_closures();
                 </tbody>
             </table>
         <?php endif; ?>
-    </section>
-
-    <section class="table-section">
-        <h3>Lizenznehmer-Suche</h3>
-        <form id="licenseeSearchForm" class="table-search" autocomplete="off">
-            <label class="sr-only" for="licenseeSearchInput">Lizenznehmer suchen</label>
-            <input type="search" id="licenseeSearchInput" name="query" placeholder="Name, Lizenznummer oder Ort" spellcheck="false" aria-describedby="licenseeSearchMessage">
-            <button type="submit" class="primary">Suchen</button>
-        </form>
-        <p id="licenseeSearchMessage" class="search-message">Geben Sie einen Namen ein, um die Suche zu starten.</p>
-        <div id="licenseeSearchResults" class="licensee-results" hidden></div>
     </section>
 </main>
 
