@@ -475,6 +475,113 @@ details {
     display: block;
 }
 
+.search-message {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.search-message.error {
+    color: var(--danger);
+}
+
+.licensee-results {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.licensee-card {
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    padding: 1.5rem;
+    background: #fcfcfc;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.licensee-card header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.licensee-card h4 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.licensee-card-meta {
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.licensee-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem 1.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+}
+
+.licensee-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.licensee-details dt {
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0;
+}
+
+.licensee-details dd {
+    margin: 0;
+    font-weight: 400;
+}
+
+.licensee-history {
+    margin-top: 1.75rem;
+}
+
+.licensee-history h5 {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+}
+
+.licensee-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.licensee-history-table thead {
+    background: var(--secondary);
+}
+
+.licensee-history-table th,
+.licensee-history-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.licensee-history-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.licensee-history-table td.notes {
+    white-space: pre-wrap;
+}
+
+.licensee-history .empty {
+    text-align: left;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .app-header {
         gap: 1rem;

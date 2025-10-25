@@ -71,6 +71,9 @@ try {
         case 'delete_block_entry':
             delete_block_entry();
             break;
+        case 'search_licensees':
+            search_licensees();
+            break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unbekannte Aktion.']);
     }
@@ -666,6 +669,177 @@ function get_prices(): void
     }
     $prices = get_license_prices($year);
     echo json_encode(['success' => true, 'preise' => $prices]);
+}
+
+function search_licensees(): void
+{
+    $query = trim((string)($_GET['query'] ?? ($_POST['query'] ?? '')));
+
+    if ($query === '') {
+        echo json_encode(['success' => false, 'message' => 'Bitte einen Suchbegriff angeben.']);
+        return;
+    }
+
+    $length = function_exists('mb_strlen') ? mb_strlen($query, 'UTF-8') : strlen($query);
+    if ($length < 2) {
+        echo json_encode(['success' => false, 'message' => 'Bitte mindestens zwei Zeichen eingeben.']);
+        return;
+    }
+
+    $lower = function_exists('mb_strtolower')
+        ? mb_strtolower($query, 'UTF-8')
+        : strtolower($query);
+
+    $searchTerm = '%' . $lower . '%';
+
+    $pdo = get_pdo();
+    ensure_person_birthdate_columns();
+
+    $sql = "SELECT id, vorname, nachname, geburtsdatum, strasse, plz, ort, telefon, email, fischerkartennummer
+            FROM lizenznehmer
+            WHERE LOWER(COALESCE(vorname, '')) LIKE :term
+               OR LOWER(COALESCE(nachname, '')) LIKE :term
+               OR LOWER(CONCAT_WS(' ', COALESCE(vorname, ''), COALESCE(nachname, ''))) LIKE :term
+               OR LOWER(COALESCE(fischerkartennummer, '')) LIKE :term
+               OR LOWER(COALESCE(strasse, '')) LIKE :term
+               OR LOWER(COALESCE(ort, '')) LIKE :term
+               OR LOWER(COALESCE(plz, '')) LIKE :term
+            ORDER BY nachname, vorname, id
+            LIMIT 50";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['term' => $searchTerm]);
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) {
+        echo json_encode(['success' => true, 'results' => []]);
+        return;
+    }
+
+    $results = [];
+    $orderedIds = [];
+    $licenseeIds = [];
+
+    foreach ($rows as $row) {
+        $id = isset($row['id']) ? (int)$row['id'] : 0;
+        if ($id <= 0) {
+            continue;
+        }
+
+        $birthdate = $row['geburtsdatum'] ?? null;
+        $formattedBirthdate = format_date($birthdate);
+        $age = calculate_age($birthdate);
+
+        $results[$id] = [
+            'id' => $id,
+            'vorname' => $row['vorname'] ?? null,
+            'nachname' => $row['nachname'] ?? null,
+            'geburtsdatum' => $birthdate ?: null,
+            'geburtsdatum_formatted' => $formattedBirthdate,
+            'alter' => $age,
+            'strasse' => $row['strasse'] ?? null,
+            'plz' => $row['plz'] ?? null,
+            'ort' => $row['ort'] ?? null,
+            'telefon' => $row['telefon'] ?? null,
+            'email' => $row['email'] ?? null,
+            'fischerkartennummer' => $row['fischerkartennummer'] ?? null,
+            'licenses' => [],
+        ];
+
+        $orderedIds[] = $id;
+        $licenseeIds[] = $id;
+    }
+
+    if (!$results) {
+        echo json_encode(['success' => true, 'results' => []]);
+        return;
+    }
+
+    $licenseeIds = array_values(array_unique($licenseeIds));
+
+    $years = available_years();
+    if ($years && $licenseeIds) {
+        rsort($years);
+        $placeholders = implode(',', array_fill(0, count($licenseeIds), '?'));
+
+        foreach ($years as $year) {
+            $licenseTable = license_table((int)$year);
+            $querySql = "SELECT id, lizenznehmer_id, lizenztyp, kosten, trinkgeld, gesamt, zahlungsdatum, notizen
+                         FROM {$licenseTable}
+                         WHERE lizenznehmer_id IN ({$placeholders})";
+
+            $licenseStmt = $pdo->prepare($querySql);
+            $licenseStmt->execute($licenseeIds);
+
+            while ($licenseRow = $licenseStmt->fetch(PDO::FETCH_ASSOC)) {
+                $licenseeId = isset($licenseRow['lizenznehmer_id']) ? (int)$licenseRow['lizenznehmer_id'] : 0;
+                if (!$licenseeId || !isset($results[$licenseeId])) {
+                    continue;
+                }
+
+                $licenseId = isset($licenseRow['id']) ? (int)$licenseRow['id'] : null;
+                $cost = isset($licenseRow['kosten']) ? (float)$licenseRow['kosten'] : null;
+                $tip = isset($licenseRow['trinkgeld']) ? (float)$licenseRow['trinkgeld'] : null;
+                $total = isset($licenseRow['gesamt']) ? (float)$licenseRow['gesamt'] : null;
+                $paymentDate = $licenseRow['zahlungsdatum'] ?? null;
+
+                $results[$licenseeId]['licenses'][] = [
+                    'jahr' => (int)$year,
+                    'lizenz_id' => $licenseId,
+                    'lizenztyp' => $licenseRow['lizenztyp'] ?? null,
+                    'kosten' => $cost,
+                    'kosten_formatted' => $cost !== null ? format_currency($cost) : null,
+                    'trinkgeld' => $tip,
+                    'trinkgeld_formatted' => $tip !== null ? format_currency($tip) : null,
+                    'gesamt' => $total,
+                    'gesamt_formatted' => $total !== null ? format_currency($total) : null,
+                    'zahlungsdatum' => $paymentDate ?: null,
+                    'zahlungsdatum_formatted' => format_date($paymentDate ?: null),
+                    'notizen' => $licenseRow['notizen'] ?? null,
+                ];
+            }
+        }
+    }
+
+    foreach ($results as &$licensee) {
+        if (!empty($licensee['licenses'])) {
+            usort($licensee['licenses'], function (array $a, array $b): int {
+                $yearCompare = ($b['jahr'] ?? 0) <=> ($a['jahr'] ?? 0);
+                if ($yearCompare !== 0) {
+                    return $yearCompare;
+                }
+
+                $dateA = $a['zahlungsdatum'] ?? null;
+                $dateB = $b['zahlungsdatum'] ?? null;
+
+                if ($dateA && $dateB && $dateA !== $dateB) {
+                    return strcmp($dateB, $dateA);
+                }
+                if ($dateA && !$dateB) {
+                    return -1;
+                }
+                if (!$dateA && $dateB) {
+                    return 1;
+                }
+
+                return ($b['lizenz_id'] ?? 0) <=> ($a['lizenz_id'] ?? 0);
+            });
+            $licensee['licenses'] = array_values($licensee['licenses']);
+        }
+    }
+    unset($licensee);
+
+    $orderedResults = [];
+    foreach ($orderedIds as $id) {
+        if (isset($results[$id])) {
+            $orderedResults[] = $results[$id];
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'results' => $orderedResults,
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 function get_blocklist(): void
