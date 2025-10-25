@@ -509,6 +509,64 @@ function move_license(): void
         return;
     }
 
+    $licenseeId = isset($row['lizenznehmer_id']) ? (int)$row['lizenznehmer_id'] : 0;
+    if ($licenseeId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Lizenznehmer für die Verlängerung wurde nicht gefunden.']);
+        return;
+    }
+
+    $columnStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column'
+    );
+    $columnStmt->execute([
+        'table' => 'lizenznehmer',
+        'column' => 'lizenznummer',
+    ]);
+    $hasLicenseNumberColumn = (int)$columnStmt->fetchColumn() > 0;
+
+    $licenseColumns = ['fischerkartennummer'];
+    if ($hasLicenseNumberColumn) {
+        $licenseColumns[] = 'lizenznummer';
+    }
+
+    $licenseeStmt = $pdo->prepare(
+        'SELECT ' . implode(', ', $licenseColumns) . ' FROM lizenznehmer WHERE id = :id'
+    );
+    $licenseeStmt->execute(['id' => $licenseeId]);
+    $licenseeRow = $licenseeStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$licenseeRow) {
+        echo json_encode(['success' => false, 'message' => 'Lizenznehmer für die Verlängerung wurde nicht gefunden.']);
+        return;
+    }
+
+    $licenseNumber = '';
+    if ($hasLicenseNumberColumn) {
+        $licenseNumber = trim((string)($licenseeRow['lizenznummer'] ?? ''));
+    }
+    if ($licenseNumber === '') {
+        $licenseNumber = trim((string)($licenseeRow['fischerkartennummer'] ?? ''));
+    }
+
+    if ($licenseNumber !== '') {
+        $licenseNumberExpr = $hasLicenseNumberColumn
+            ? "COALESCE(NULLIF(ln.lizenznummer, ''), NULLIF(ln.fischerkartennummer, ''))"
+            : "NULLIF(ln.fischerkartennummer, '')";
+
+        $duplicateStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM {$toTable} target " .
+            'JOIN lizenznehmer ln ON ln.id = target.lizenznehmer_id ' .
+            "WHERE LOWER(TRIM({$licenseNumberExpr})) = LOWER(TRIM(:license_number))"
+        );
+        $duplicateStmt->execute(['license_number' => $licenseNumber]);
+        if ((int)$duplicateStmt->fetchColumn() > 0) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Für diese Lizenznummer existiert im Zieljahr bereits eine Lizenz.',
+            ]);
+            return;
+        }
+    }
+
     $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
     $type = $data['lizenztyp'] ?? $row['lizenztyp'];
     if (!in_array($type, $allowedTypes, true)) {
