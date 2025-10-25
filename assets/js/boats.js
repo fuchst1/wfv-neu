@@ -7,6 +7,9 @@
     const assignForm = document.getElementById('assignLicenseForm');
     const table = document.getElementById('boatTable');
 
+    const currentYearAttribute = document.body ? document.body.getAttribute('data-current-year') : null;
+    const currentYear = currentYearAttribute ? parseInt(currentYearAttribute, 10) : NaN;
+
     if (!modal || !form || !openButton || !table) {
         return;
     }
@@ -241,7 +244,12 @@
         if (licenseCache) {
             return Promise.resolve(licenseCache);
         }
-        return fetch('api.php?action=get_boat_licenses')
+        const params = new URLSearchParams({ action: 'get_boat_licenses' });
+        if (!Number.isNaN(currentYear) && currentYear > 0) {
+            params.set('jahr', String(currentYear));
+        }
+
+        return fetch(`api.php?${params.toString()}`)
             .then(r => r.json())
             .then(result => {
                 if (!result.success) {
