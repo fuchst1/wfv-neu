@@ -70,6 +70,8 @@
     let currentLicense = null;
     let pendingBlockPayload = null;
 
+    const YEAR_LOCKED = typeof IS_YEAR_CLOSED !== 'undefined' && !!IS_YEAR_CLOSED;
+
     if (!licenseModal || !licenseForm) {
         return;
     }
@@ -114,8 +116,14 @@
     const addLicenseButton = document.getElementById('openAddLicense');
     if (addLicenseButton) {
         addLicenseButton.addEventListener('click', () => {
+            if (YEAR_LOCKED) {
+                return;
+            }
             openLicenseModal(null);
         });
+        if (YEAR_LOCKED) {
+            addLicenseButton.disabled = true;
+        }
     }
 
     if (createYearButton) {
@@ -137,13 +145,22 @@
         const extendButton = row.querySelector('.extend');
 
         if (editButton) {
-            editButton.addEventListener('click', () => openLicenseModal(data, row));
+            editButton.addEventListener('click', () => {
+                if (YEAR_LOCKED) return;
+                openLicenseModal(data, row);
+            });
         }
         if (deleteButton) {
-            deleteButton.addEventListener('click', () => openDeleteModal(data, row));
+            deleteButton.addEventListener('click', () => {
+                if (YEAR_LOCKED) return;
+                openDeleteModal(data, row);
+            });
         }
         if (extendButton) {
-            extendButton.addEventListener('click', () => openExtendModal(data, row));
+            extendButton.addEventListener('click', () => {
+                if (YEAR_LOCKED) return;
+                openExtendModal(data, row);
+            });
         }
     });
 
@@ -239,6 +256,7 @@
 
     licenseForm.addEventListener('submit', event => {
         event.preventDefault();
+        if (YEAR_LOCKED) return;
         if (!licenseForm.checkValidity()) return;
         const payload = buildLicensePayload();
         pendingBlockPayload = payload;
@@ -248,6 +266,7 @@
     const confirmDeleteButton = document.getElementById('confirmDelete');
     if (confirmDeleteButton) {
         confirmDeleteButton.addEventListener('click', () => {
+            if (YEAR_LOCKED) return;
             if (!currentLicense) return;
             fetch('api.php?action=delete_license', {
                 method: 'POST',
@@ -269,6 +288,7 @@
     if (extendForm) {
         extendForm.addEventListener('submit', event => {
             event.preventDefault();
+            if (YEAR_LOCKED) return;
             const toYear = parseInt(extendFields.year.value, 10);
             const selectedLicenseId = extendFields.license ? parseInt(extendFields.license.value, 10) : (currentLicense ? parseInt(currentLicense.lizenz_id, 10) : NaN);
             if (!toYear || Number.isNaN(selectedLicenseId) || selectedLicenseId <= 0) return;

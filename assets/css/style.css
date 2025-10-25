@@ -290,6 +290,19 @@ button:hover {
     transform: translateY(-1px);
 }
 
+button:disabled,
+button[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+button:disabled:hover,
+button[disabled]:hover {
+    transform: none;
+    background: inherit;
+}
+
 tr:target {
     background: #f0f9f4;
     outline: 2px solid var(--primary);
@@ -299,6 +312,34 @@ tr:target {
     display: block;
     width: 100%;
     margin-bottom: 0.4rem;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--secondary);
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.badge-closed {
+    background: #fdecec;
+    color: var(--danger);
+}
+
+.year-status-message {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: #fdecec;
+    color: var(--danger);
+    font-weight: 600;
 }
 
 .modal {
