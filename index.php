@@ -16,6 +16,8 @@ $licensees = get_licensees_for_year($currentYear);
 $allLicensees = get_all_licensees();
 $prices = get_license_prices($currentYear);
 $yearOverview = get_year_overview($currentYear);
+$yearClosure = get_year_closure($currentYear);
+$isYearClosed = $yearClosure !== null;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -43,9 +45,14 @@ $yearOverview = get_year_overview($currentYear);
         <div>
             <h2>Überblick <?= $currentYear ?></h2>
             <p>Lizenznehmer gesamt: <strong><?= count($licensees) ?></strong></p>
+            <?php if ($isYearClosed): ?>
+                <p class="year-status-message">
+                    Dieses Jahr wurde<?= $yearClosure && $yearClosure['abgeschlossen_am'] ? ' am ' . htmlspecialchars(format_datetime($yearClosure['abgeschlossen_am'])) : '' ?> abgeschlossen. Änderungen sind nicht mehr möglich.
+                </p>
+            <?php endif; ?>
         </div>
         <div>
-            <button class="primary" id="openAddLicense">Lizenz hinzufügen</button>
+            <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
         </div>
     </section>
 
@@ -110,9 +117,13 @@ $yearOverview = get_year_overview($currentYear);
                                 <?php endif; ?>
                             </td>
                             <td class="actions">
-                                <button class="primary extend">Verlängern</button>
-                                <button class="secondary edit">Bearbeiten</button>
-                                <button class="danger delete">Löschen</button>
+                                <?php if ($isYearClosed): ?>
+                                    <span class="badge badge-closed">Jahr abgeschlossen</span>
+                                <?php else: ?>
+                                    <button class="primary extend">Verlängern</button>
+                                    <button class="secondary edit">Bearbeiten</button>
+                                    <button class="danger delete">Löschen</button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -355,7 +366,8 @@ $yearOverview = get_year_overview($currentYear);
 <script>
 const CURRENT_YEAR = <?= json_encode($currentYear) ?>;
 const LICENSE_PRICES = <?= json_encode($prices) ?>;
-const OPEN_LICENSE_MODAL = <?= json_encode($_GET['create'] ?? null) ?>;
+const IS_YEAR_CLOSED = <?= $isYearClosed ? 'true' : 'false' ?>;
+const OPEN_LICENSE_MODAL = <?= json_encode($isYearClosed ? null : ($_GET['create'] ?? null)) ?>;
 </script>
 <script src="assets/js/validation.js"></script>
 <script src="assets/js/table-search.js"></script>

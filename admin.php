@@ -12,6 +12,7 @@ if (!$currentYear) {
 
 $referenceYear = $years ? max($years) : $currentYear;
 $prices = $referenceYear ? get_license_prices((int)$referenceYear) : [];
+$yearClosures = get_year_closures();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -54,15 +55,29 @@ $prices = $referenceYear ? get_license_prices((int)$referenceYear) : [];
                 <thead>
                     <tr>
                         <th>Jahr</th>
+                        <th>Status</th>
                         <th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach (array_reverse($years) as $year): ?>
+                        <?php $closure = $yearClosures[$year] ?? null; ?>
+                        <?php $closedAt = $closure && isset($closure['abgeschlossen_am']) ? format_datetime($closure['abgeschlossen_am']) : null; ?>
                         <tr>
                             <td><?= $year ?></td>
+                            <td>
+                                <?php if ($closure): ?>
+                                    <span class="badge badge-closed">Abgeschlossen</span>
+                                    <?php if ($closedAt): ?>
+                                        <br><small>am <?= htmlspecialchars($closedAt) ?></small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="badge">Offen</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="actions">
-                                <button type="button" class="danger" data-delete-year="<?= $year ?>">Jahr löschen</button>
+                                <button type="button" class="secondary" data-close-year="<?= $year ?>"<?= $closure ? ' disabled aria-disabled="true"' : '' ?>>Jahr abschließen</button>
+                                <button type="button" class="danger" data-delete-year="<?= $year ?>"<?= $closure ? ' disabled aria-disabled="true"' : '' ?>>Jahr löschen</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -111,6 +126,20 @@ $prices = $referenceYear ? get_license_prices((int)$referenceYear) : [];
         <footer class="modal-footer">
             <button type="button" class="secondary" data-close>Abbrechen</button>
             <button type="button" class="danger" id="confirmDeleteYear">Löschen</button>
+        </footer>
+    </div>
+</div>
+
+<div class="modal" id="closeYearModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Jahr abschließen</h2>
+            <button class="close" data-close>&times;</button>
+        </header>
+        <p>Soll das Jahr <strong id="yearToClose"></strong> wirklich abgeschlossen werden? Danach sind keine Änderungen mehr möglich.</p>
+        <footer class="modal-footer">
+            <button type="button" class="secondary" data-close>Abbrechen</button>
+            <button type="button" class="primary" id="confirmCloseYear">Abschließen</button>
         </footer>
     </div>
 </div>

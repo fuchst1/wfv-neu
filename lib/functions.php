@@ -97,6 +97,27 @@ function ensure_person_birthdate_columns(): void
     $ensured = true;
 }
 
+function ensure_year_closure_table_exists(): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $pdo = get_pdo();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS jahresabschluesse (
+        jahr INT PRIMARY KEY,
+        abgeschlossen_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        anzahl_lizenzen INT,
+        gesamt_kosten DECIMAL(10,2),
+        gesamt_trinkgeld DECIMAL(10,2),
+        gesamt_einnahmen DECIMAL(10,2),
+        notizen TEXT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $ensured = true;
+}
+
 function ensure_year_exists(int $year): bool
 {
     $pdo = get_pdo();
@@ -118,6 +139,66 @@ function ensure_year_exists(int $year): bool
     ensure_boats_table_exists();
 
     return true;
+}
+
+function get_year_closures(): array
+{
+    ensure_year_closure_table_exists();
+
+    $pdo = get_pdo();
+    $stmt = $pdo->query('SELECT jahr, abgeschlossen_am, anzahl_lizenzen, gesamt_kosten, gesamt_trinkgeld, gesamt_einnahmen, notizen FROM jahresabschluesse ORDER BY jahr');
+
+    $closures = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $year = (int)$row['jahr'];
+        $closures[$year] = [
+            'abgeschlossen_am' => $row['abgeschlossen_am'] ?? null,
+            'anzahl_lizenzen' => isset($row['anzahl_lizenzen']) ? (int)$row['anzahl_lizenzen'] : 0,
+            'gesamt_kosten' => isset($row['gesamt_kosten']) ? (float)$row['gesamt_kosten'] : 0.0,
+            'gesamt_trinkgeld' => isset($row['gesamt_trinkgeld']) ? (float)$row['gesamt_trinkgeld'] : 0.0,
+            'gesamt_einnahmen' => isset($row['gesamt_einnahmen']) ? (float)$row['gesamt_einnahmen'] : 0.0,
+            'notizen' => $row['notizen'] ?? null,
+        ];
+    }
+
+    return $closures;
+}
+
+function get_year_closure(int $year): ?array
+{
+    static $cache = [];
+    if (array_key_exists($year, $cache)) {
+        return $cache[$year];
+    }
+
+    ensure_year_closure_table_exists();
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('SELECT jahr, abgeschlossen_am, anzahl_lizenzen, gesamt_kosten, gesamt_trinkgeld, gesamt_einnahmen, notizen FROM jahresabschluesse WHERE jahr = :jahr LIMIT 1');
+    $stmt->execute(['jahr' => $year]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row === false) {
+        $cache[$year] = null;
+        return null;
+    }
+
+    $cache[$year] = [
+        'jahr' => (int)$row['jahr'],
+        'abgeschlossen_am' => $row['abgeschlossen_am'] ?? null,
+        'anzahl_lizenzen' => isset($row['anzahl_lizenzen']) ? (int)$row['anzahl_lizenzen'] : 0,
+        'gesamt_kosten' => isset($row['gesamt_kosten']) ? (float)$row['gesamt_kosten'] : 0.0,
+        'gesamt_trinkgeld' => isset($row['gesamt_trinkgeld']) ? (float)$row['gesamt_trinkgeld'] : 0.0,
+        'gesamt_einnahmen' => isset($row['gesamt_einnahmen']) ? (float)$row['gesamt_einnahmen'] : 0.0,
+        'notizen' => $row['notizen'] ?? null,
+    ];
+
+    return $cache[$year];
+}
+
+function is_year_closed(int $year): bool
+{
+    return get_year_closure($year) !== null;
 }
 
 function get_blocklist_entries(): array
@@ -382,6 +463,29 @@ function get_year_overview(int $year): array
 function format_currency(float $value): string
 {
     return number_format($value, 2, ',', '.');
+}
+
+function format_datetime(?string $value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+
+    $value = trim($value);
+    if ($value === '' || $value === '0000-00-00 00:00:00') {
+        return null;
+    }
+
+    $date = DateTime::createFromFormat('Y-m-d H:i:s', $value);
+    if (!$date) {
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return null;
+        }
+        $date = (new DateTime())->setTimestamp($timestamp);
+    }
+
+    return $date->format('d.m.Y H:i');
 }
 
 function format_date(?string $value): ?string

@@ -1,21 +1,27 @@
 (function () {
     const createYearModal = document.getElementById('createYearModal');
     const deleteYearModal = document.getElementById('deleteYearModal');
+    const closeYearModal = document.getElementById('closeYearModal');
     const createYearForm = document.getElementById('createYearForm');
     const createYearButton = document.getElementById('openCreateYear');
     const yearInput = document.getElementById('newYear');
     const priceInputs = createYearForm ? Array.from(createYearForm.querySelectorAll('.price-input')) : [];
     const yearToDeleteLabel = document.getElementById('yearToDelete');
     const confirmDeleteButton = document.getElementById('confirmDeleteYear');
+    const yearToCloseLabel = document.getElementById('yearToClose');
+    const confirmCloseYearButton = document.getElementById('confirmCloseYear');
 
     let pendingYearDelete = null;
+    let pendingYearClose = null;
 
     function closeModals() {
-        [createYearModal, deleteYearModal].forEach(modal => {
+        [createYearModal, deleteYearModal, closeYearModal].forEach(modal => {
             if (modal) {
                 modal.hidden = true;
             }
         });
+        pendingYearDelete = null;
+        pendingYearClose = null;
     }
 
     function prefillCreateYearForm() {
@@ -94,6 +100,7 @@
 
     document.querySelectorAll('[data-delete-year]').forEach(button => {
         button.addEventListener('click', () => {
+            if (button.disabled) return;
             const { deleteYear } = button.dataset;
             const year = parseInt(deleteYear, 10);
             if (!year) return;
@@ -103,6 +110,22 @@
             }
             if (deleteYearModal) {
                 deleteYearModal.hidden = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-close-year]').forEach(button => {
+        button.addEventListener('click', () => {
+            if (button.disabled) return;
+            const { closeYear } = button.dataset;
+            const year = parseInt(closeYear, 10);
+            if (!year) return;
+            pendingYearClose = year;
+            if (yearToCloseLabel) {
+                yearToCloseLabel.textContent = year.toString();
+            }
+            if (closeYearModal) {
+                closeYearModal.hidden = false;
             }
         });
     });
@@ -124,6 +147,26 @@
                     }
                 })
                 .catch(() => alert('Jahr konnte nicht gelöscht werden'));
+        });
+    }
+
+    if (confirmCloseYearButton) {
+        confirmCloseYearButton.addEventListener('click', () => {
+            if (!pendingYearClose) return;
+            fetch('api.php?action=close_year', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year: pendingYearClose })
+            })
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        window.location.href = `admin.php?jahr=${pendingYearClose}`;
+                    } else {
+                        alert(result.message || 'Jahr konnte nicht abgeschlossen werden');
+                    }
+                })
+                .catch(() => alert('Jahr konnte nicht abgeschlossen werden'));
         });
     }
 })();

@@ -44,6 +44,9 @@ try {
         case 'delete_year':
             delete_year();
             break;
+        case 'close_year':
+            close_year();
+            break;
         case 'get_prices':
             get_prices();
             break;
@@ -108,6 +111,11 @@ function save_license(): void
     ensure_year_exists($year);
     ensure_boats_table_exists();
     $boatTable = boats_table();
+
+    if (is_year_closed($year)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr wurde bereits abgeschlossen und kann nicht mehr bearbeitet werden.']);
+        return;
+    }
 
     $licenseePayload = $data['licensee'] ?? [];
     $licensePayload = $data['license'] ?? [];
@@ -456,6 +464,12 @@ function delete_license(): void
     }
     $licenseTable = license_table($year);
     ensure_year_exists($year);
+
+    if (is_year_closed($year)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr wurde bereits abgeschlossen und kann nicht mehr bearbeitet werden.']);
+        return;
+    }
+
     $pdo = get_pdo();
     $stmt = $pdo->prepare("DELETE FROM {$licenseTable} WHERE id = :id");
     $stmt->execute(['id' => $licenseId]);
@@ -473,9 +487,19 @@ function move_license(): void
         return;
     }
 
+    if (is_year_closed($fromYear)) {
+        echo json_encode(['success' => false, 'message' => 'Das Ausgangsjahr wurde bereits abgeschlossen und kann nicht mehr bearbeitet werden.']);
+        return;
+    }
+
     $fromTable = license_table($fromYear);
     $toTable = license_table($toYear);
     ensure_year_exists($toYear);
+
+    if (is_year_closed($toYear)) {
+        echo json_encode(['success' => false, 'message' => 'Das Zieljahr wurde bereits abgeschlossen und kann keine Änderungen mehr aufnehmen.']);
+        return;
+    }
 
     $pdo = get_pdo();
 
@@ -568,6 +592,11 @@ function delete_year(): void
         return;
     }
 
+    if (is_year_closed($year)) {
+        echo json_encode(['success' => false, 'message' => 'Abgeschlossene Jahre können nicht gelöscht werden.']);
+        return;
+    }
+
     $pdo = get_pdo();
     $licenseTable = license_table($year);
     $quotedLicenseTable = sprintf('`%s`', str_replace('`', '``', $licenseTable));
@@ -581,6 +610,46 @@ function delete_year(): void
 
     $stmt = $pdo->prepare('DELETE FROM lizenzpreise WHERE jahr = :jahr');
     $stmt->execute(['jahr' => $year]);
+
+    echo json_encode(['success' => true]);
+}
+
+function close_year(): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    $year = (int)($data['year'] ?? 0);
+    if ($year < 2000) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    if (!in_array($year, available_years(), true)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr existiert nicht.']);
+        return;
+    }
+
+    if (is_year_closed($year)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr wurde bereits abgeschlossen.']);
+        return;
+    }
+
+    ensure_year_exists($year);
+    ensure_year_closure_table_exists();
+
+    $overview = get_year_overview($year);
+    $notesRaw = isset($data['notes']) ? trim((string)$data['notes']) : '';
+    $notes = $notesRaw !== '' ? $notesRaw : null;
+
+    $pdo = get_pdo();
+    $stmt = $pdo->prepare('INSERT INTO jahresabschluesse (jahr, abgeschlossen_am, anzahl_lizenzen, gesamt_kosten, gesamt_trinkgeld, gesamt_einnahmen, notizen) VALUES (:jahr, NOW(), :anzahl, :kosten, :trinkgeld, :gesamt, :notizen)');
+    $stmt->execute([
+        'jahr' => $year,
+        'anzahl' => $overview['total_count'] ?? 0,
+        'kosten' => $overview['total_cost'] ?? 0,
+        'trinkgeld' => $overview['total_tip'] ?? 0,
+        'gesamt' => $overview['total_combined'] ?? 0,
+        'notizen' => $notes,
+    ]);
 
     echo json_encode(['success' => true]);
 }
@@ -691,6 +760,11 @@ function assign_newcomer(): void
     ensure_year_exists($year);
     ensure_person_birthdate_columns();
     $licenseTable = license_table($year);
+
+    if (is_year_closed($year)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr wurde bereits abgeschlossen und kann keine neuen Lizenzen mehr aufnehmen.']);
+        return;
+    }
 
     $pdo->beginTransaction();
     try {
