@@ -47,7 +47,7 @@ $isYearClosed = $yearClosure !== null;
             <p>Lizenznehmer gesamt: <strong><?= count($licensees) ?></strong></p>
             <?php if ($isYearClosed): ?>
                 <p class="year-status-message">
-                    Dieses Jahr wurde<?= $yearClosure && $yearClosure['abgeschlossen_am'] ? ' am ' . htmlspecialchars(format_datetime($yearClosure['abgeschlossen_am'])) : '' ?> abgeschlossen. Änderungen sind nicht mehr möglich.
+                    Dieses Jahr wurde<?= $yearClosure && $yearClosure['abgeschlossen_am'] ? ' am ' . htmlspecialchars(format_datetime($yearClosure['abgeschlossen_am'])) : '' ?> abgeschlossen. Direkte Änderungen sind nicht mehr möglich, Verlängerungen in kommende Jahre jedoch weiterhin.
                 </p>
             <?php endif; ?>
         </div>
@@ -120,10 +120,10 @@ $isYearClosed = $yearClosure !== null;
                                 <?php endif; ?>
                             </td>
                             <td class="actions">
+                                <button class="primary extend">Verlängern</button>
                                 <?php if ($isYearClosed): ?>
                                     <span class="badge badge-closed">Jahr abgeschlossen</span>
                                 <?php else: ?>
-                                    <button class="primary extend">Verlängern</button>
                                     <button class="secondary edit">Bearbeiten</button>
                                     <button class="danger delete">Löschen</button>
                                 <?php endif; ?>

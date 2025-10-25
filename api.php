@@ -487,11 +487,6 @@ function move_license(): void
         return;
     }
 
-    if (is_year_closed($fromYear)) {
-        echo json_encode(['success' => false, 'message' => 'Das Ausgangsjahr wurde bereits abgeschlossen und kann nicht mehr bearbeitet werden.']);
-        return;
-    }
-
     $fromTable = license_table($fromYear);
     $toTable = license_table($toYear);
     ensure_year_exists($toYear);
