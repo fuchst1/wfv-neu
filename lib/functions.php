@@ -340,8 +340,8 @@ function get_licensees_for_year(int $year): array
     ensure_boats_table_exists();
     $boatsTable = boats_table();
 
-    $sql = "SELECT l.id AS lizenz_id, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
-                ln.*, 
+    $sql = "SELECT l.id AS lizenz_id, l.lizenznehmer_id, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
+                ln.*,
                 (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boot_id,
                 (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer,
                 (SELECT b2.notizen FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boot_notizen
@@ -349,7 +349,74 @@ function get_licensees_for_year(int $year): array
             JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
             ORDER BY ln.nachname, ln.vorname";
     $stmt = $pdo->query($sql);
-    return $stmt->fetchAll();
+    $licensees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$licensees) {
+        return $licensees;
+    }
+
+    $licenseeIds = [];
+    foreach ($licensees as $row) {
+        if (isset($row['lizenznehmer_id'])) {
+            $licenseeIds[] = (int)$row['lizenznehmer_id'];
+        } elseif (isset($row['id'])) {
+            $licenseeIds[] = (int)$row['id'];
+        }
+    }
+    $licenseeIds = array_values(array_unique(array_filter($licenseeIds, fn (int $id): bool => $id > 0)));
+
+    if (!$licenseeIds) {
+        return $licensees;
+    }
+
+    $previousYears = array_values(array_filter(available_years(), fn (int $availableYear): bool => $availableYear < $year));
+
+    if (!$previousYears) {
+        return $licensees;
+    }
+
+    $history = [];
+    $placeholders = implode(',', array_fill(0, count($licenseeIds), '?'));
+
+    foreach ($previousYears as $previousYear) {
+        $previousLicenseTable = license_table($previousYear);
+        $historyStmt = $pdo->prepare("SELECT DISTINCT lizenznehmer_id FROM {$previousLicenseTable} WHERE lizenznehmer_id IN ({$placeholders})");
+        $historyStmt->execute($licenseeIds);
+
+        while ($historyRow = $historyStmt->fetch(PDO::FETCH_ASSOC)) {
+            $historyId = isset($historyRow['lizenznehmer_id']) ? (int)$historyRow['lizenznehmer_id'] : null;
+            if ($historyId === null) {
+                continue;
+            }
+
+            if (!isset($history[$historyId])) {
+                $history[$historyId] = [];
+            }
+
+            $history[$historyId][] = $previousYear;
+        }
+    }
+
+    foreach ($history as &$yearsList) {
+        rsort($yearsList);
+    }
+    unset($yearsList);
+
+    foreach ($licensees as &$licenseeRow) {
+        $licenseeRowId = null;
+        if (isset($licenseeRow['lizenznehmer_id'])) {
+            $licenseeRowId = (int)$licenseeRow['lizenznehmer_id'];
+        } elseif (isset($licenseeRow['id'])) {
+            $licenseeRowId = (int)$licenseeRow['id'];
+        }
+
+        $licenseeRow['previous_license_years'] = $licenseeRowId !== null && isset($history[$licenseeRowId])
+            ? $history[$licenseeRowId]
+            : [];
+    }
+    unset($licenseeRow);
+
+    return $licensees;
 }
 
 function get_boats_overview(): array

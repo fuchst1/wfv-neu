@@ -100,6 +100,9 @@ $isYearClosed = $yearClosure !== null;
                                 <?php if ($licenseeBirthdateDisplay): ?>
                                     <br><small>Geburtsdatum: <?= htmlspecialchars($licenseeBirthdateDisplay) ?><?= $licenseeAge !== null ? ' (Alter: ' . (int)$licenseeAge . ')' : '' ?></small>
                                 <?php endif; ?>
+                                <?php if (!empty($row['previous_license_years'])): ?>
+                                    <br><small>Vorjahre: <?= htmlspecialchars(implode(', ', $row['previous_license_years'])) ?></small>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['lizenztyp']) ?></td>
                             <td><?= format_currency((float)$row['kosten']) ?> €</td>
