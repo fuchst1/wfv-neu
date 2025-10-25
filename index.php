@@ -56,6 +56,9 @@ $isYearClosed = $yearClosure !== null;
         </div>
     </section>
 
+    <?php
+        ob_start();
+    ?>
     <section class="table-section">
         <div class="table-filter">
             <label class="table-search">
@@ -134,7 +137,11 @@ $isYearClosed = $yearClosure !== null;
             </tbody>
         </table>
     </section>
+    <?php
+        $tableSection = ob_get_clean();
 
+        ob_start();
+    ?>
     <section class="summary-section">
         <h3>Verkäufe nach Lizenztyp</h3>
         <?php if (!$yearOverview['types']): ?>
@@ -173,6 +180,11 @@ $isYearClosed = $yearClosure !== null;
             </table>
         <?php endif; ?>
     </section>
+    <?php
+        $summarySection = ob_get_clean();
+
+        echo $isYearClosed ? $summarySection . $tableSection : $tableSection . $summarySection;
+    ?>
 </main>
 
 <div class="modal" id="licenseModal" hidden>
