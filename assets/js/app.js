@@ -158,7 +158,6 @@
         }
         if (extendButton) {
             extendButton.addEventListener('click', () => {
-                if (YEAR_LOCKED) return;
                 openExtendModal(data, row);
             });
         }
@@ -288,7 +287,6 @@
     if (extendForm) {
         extendForm.addEventListener('submit', event => {
             event.preventDefault();
-            if (YEAR_LOCKED) return;
             const toYear = parseInt(extendFields.year.value, 10);
             const selectedLicenseId = extendFields.license ? parseInt(extendFields.license.value, 10) : (currentLicense ? parseInt(currentLicense.lizenz_id, 10) : NaN);
             if (!toYear || Number.isNaN(selectedLicenseId) || selectedLicenseId <= 0) return;
