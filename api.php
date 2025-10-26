@@ -281,14 +281,10 @@ function save_boat(): void
     }
 
     $boatPayload = $data['boat'] ?? [];
-    $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNumberRaw = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNumber = $boatNumberRaw === '' ? null : $boatNumberRaw;
     $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
     $boatNotes = $boatNotes === '' ? null : $boatNotes;
-
-    if ($boatNumber === '') {
-        echo json_encode(['success' => false, 'message' => 'Bootsnummer ist erforderlich.']);
-        return;
-    }
 
     ensure_boats_table_exists();
 
@@ -314,11 +310,12 @@ function update_boat(): void
 
     $boatPayload = $data['boat'] ?? [];
     $boatId = (int)($boatPayload['id'] ?? 0);
-    $boatNumber = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNumberRaw = trim((string)($boatPayload['bootnummer'] ?? ''));
+    $boatNumber = $boatNumberRaw === '' ? null : $boatNumberRaw;
     $boatNotes = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : null;
     $boatNotes = $boatNotes === '' ? null : $boatNotes;
 
-    if ($boatId <= 0 || $boatNumber === '') {
+    if ($boatId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
     }
