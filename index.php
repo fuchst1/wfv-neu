@@ -367,7 +367,7 @@ $isYearClosed = $yearClosure !== null;
 <div class="modal" id="blockWarningModal" hidden>
     <div class="modal-content">
         <header>
-            <h2>Auf Sperrliste</h2>
+            <h2 id="blockWarningTitle">Auf Sperrliste</h2>
             <button class="close" id="closeBlockWarning" type="button">&times;</button>
         </header>
         <p id="blockWarningText">Der ausgewählte Lizenznehmer steht auf der Sperrliste.</p>

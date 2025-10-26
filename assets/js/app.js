@@ -6,9 +6,12 @@
     const createYearModal = document.getElementById('createYearModal');
     const blockWarningModal = document.getElementById('blockWarningModal');
     const blockWarningText = document.getElementById('blockWarningText');
+    const blockWarningTitle = document.getElementById('blockWarningTitle');
     const confirmBlockOverride = document.getElementById('confirmBlockOverride');
     const cancelBlockWarning = document.getElementById('cancelBlockWarning');
     const closeBlockWarningButton = document.getElementById('closeBlockWarning');
+    const defaultBlockWarningTitle = blockWarningTitle ? blockWarningTitle.textContent : '';
+    const defaultBlockWarningConfirmLabel = confirmBlockOverride ? confirmBlockOverride.textContent : '';
 
     const AGE_RULES = {
         Kinder: { min: 10, max: 14 },
@@ -69,6 +72,7 @@
     let currentRow = null;
     let currentLicense = null;
     let pendingBlockPayload = null;
+    let pendingBlockHandlers = null;
 
     const YEAR_LOCKED = typeof IS_YEAR_CLOSED !== 'undefined' && !!IS_YEAR_CLOSED;
 
@@ -104,12 +108,24 @@
 
     if (confirmBlockOverride) {
         confirmBlockOverride.addEventListener('click', () => {
-            if (!pendingBlockPayload) {
-                closeBlockWarning();
+            if (pendingBlockHandlers && typeof pendingBlockHandlers.onConfirm === 'function') {
+                const { onConfirm } = pendingBlockHandlers;
+                pendingBlockHandlers = null;
+                pendingBlockPayload = null;
+                hideBlockWarningModal();
+                onConfirm();
                 return;
             }
-            blockWarningModal.hidden = true;
-            submitLicensePayload(pendingBlockPayload, true);
+
+            if (pendingBlockPayload) {
+                const payload = pendingBlockPayload;
+                pendingBlockPayload = null;
+                hideBlockWarningModal();
+                submitLicensePayload(payload, true);
+                return;
+            }
+
+            hideBlockWarningModal();
         });
     }
 
@@ -292,29 +308,17 @@
             if (!toYear || Number.isNaN(selectedLicenseId) || selectedLicenseId <= 0) return;
             const selectedLicense = licenseDataMap.get(selectedLicenseId) || currentLicense || {};
             currentLicense = selectedLicense || null;
-            fetch('api.php?action=move_license', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    from_year: CURRENT_YEAR,
-                    to_year: toYear,
-                    license_id: selectedLicenseId,
-                    lizenztyp: extendFields.type ? extendFields.type.value || selectedLicense.lizenztyp : selectedLicense.lizenztyp,
-                    kosten: extendFields.cost.value,
-                    trinkgeld: extendFields.tip.value || 0,
-                    zahlungsdatum: extendFields.date.value,
-                    notizen: extendFields.notes.value
-                })
-            })
-                .then(r => r.json())
-                .then(result => {
-                    if (result.success) {
-                        window.location.href = `?jahr=${toYear}`;
-                    } else {
-                        alert(result.message || 'Verlängerung fehlgeschlagen');
-                    }
-                })
-                .catch(() => alert('Verlängerung fehlgeschlagen'));
+            const payload = {
+                from_year: CURRENT_YEAR,
+                to_year: toYear,
+                license_id: selectedLicenseId,
+                lizenztyp: extendFields.type ? extendFields.type.value || selectedLicense.lizenztyp : selectedLicense.lizenztyp,
+                kosten: extendFields.cost.value,
+                trinkgeld: extendFields.tip.value || 0,
+                zahlungsdatum: extendFields.date.value,
+                notizen: extendFields.notes.value,
+            };
+            submitExtendPayload(payload, false);
         });
     }
 
@@ -664,7 +668,14 @@
 
         if (result.blocked && !force) {
             pendingBlockPayload = payload;
-            showBlockWarning(result.entry, payload);
+            showBlockWarning(result.entry, payload, {
+                onConfirm: () => {
+                    submitLicensePayload(payload, true);
+                },
+                onCancel: () => {
+                    pendingBlockPayload = null;
+                },
+            });
             return;
         }
 
@@ -672,38 +683,130 @@
         alert(result.message || 'Speichern fehlgeschlagen');
     }
 
-    function showBlockWarning(entry, payload) {
+    function submitExtendPayload(payload, force) {
+        const requestBody = { ...payload, force };
+        fetch('api.php?action=move_license', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(result => handleExtendResult(result, payload, force))
+            .catch(() => {
+                alert('Verlängerung fehlgeschlagen');
+            });
+    }
+
+    function handleExtendResult(result, payload, force) {
+        if (result.success) {
+            const targetYearRaw = payload && payload.to_year ? parseInt(payload.to_year, 10) : (extendFields.year ? parseInt(extendFields.year.value, 10) : NaN);
+            const targetYear = Number.isFinite(targetYearRaw) && targetYearRaw > 0 ? targetYearRaw : CURRENT_YEAR;
+            window.location.href = `?jahr=${targetYear}`;
+            return;
+        }
+
+        if (result.duplicate && !force) {
+            const licenseNumber = result.license_number ? String(result.license_number).trim() : '';
+            const baseMessageRaw = result.message || 'Für diese Lizenznummer existiert im Zieljahr bereits eine Lizenz.';
+            const trimmedBase = baseMessageRaw.trim();
+            const hasLicenseNumber = licenseNumber !== '';
+            let messageWithNumber = trimmedBase;
+            if (hasLicenseNumber) {
+                if (trimmedBase.endsWith('.')) {
+                    messageWithNumber = `${trimmedBase.slice(0, -1)} (${licenseNumber}).`;
+                } else {
+                    messageWithNumber = `${trimmedBase} (${licenseNumber})`;
+                }
+            }
+            const promptMessage = messageWithNumber.endsWith('?')
+                ? messageWithNumber
+                : `${messageWithNumber}${messageWithNumber.endsWith('.') ? '' : '.'} Möchtest du trotzdem fortfahren?`;
+            showBlockWarning(null, null, {
+                message: promptMessage,
+                title: 'Lizenz bereits vorhanden',
+                confirmLabel: 'Trotzdem verlängern',
+                onConfirm: () => {
+                    submitExtendPayload(payload, true);
+                },
+            });
+            return;
+        }
+
+        alert(result.message || 'Verlängerung fehlgeschlagen');
+    }
+
+    function showBlockWarning(entry, payload, options = {}) {
+        const { message: customMessage, title, confirmLabel, onConfirm, onCancel } = options;
         const licensee = payload && payload.licensee ? payload.licensee : {};
         const firstName = licensee.vorname || '';
         const lastName = licensee.nachname || '';
         const displayName = [lastName, firstName].filter(Boolean).join(', ');
-        let message = 'Der ausgewählte Lizenznehmer steht auf der Sperrliste.';
-        if (displayName) {
-            message = `Der Lizenznehmer ${displayName} steht auf der Sperrliste.`;
+
+        let message = customMessage || 'Der ausgewählte Lizenznehmer steht auf der Sperrliste.';
+        if (!customMessage) {
+            if (displayName) {
+                message = `Der Lizenznehmer ${displayName} steht auf der Sperrliste.`;
+            }
+            if (entry && entry.lizenznummer) {
+                message += ` Lizenznummer: ${entry.lizenznummer}.`;
+            }
+            message += ' Möchtest du trotzdem fortfahren?';
         }
-        if (entry && entry.lizenznummer) {
-            message += ` Lizenznummer: ${entry.lizenznummer}.`;
-        }
-        message += ' Möchtest du trotzdem fortfahren?';
+
+        const confirmHandler = typeof onConfirm === 'function'
+            ? onConfirm
+            : () => submitLicensePayload(payload, true);
+        const cancelHandler = typeof onCancel === 'function'
+            ? onCancel
+            : () => { pendingBlockPayload = null; };
 
         if (!blockWarningModal || !blockWarningText || !confirmBlockOverride) {
-            if (window.confirm(message)) {
-                submitLicensePayload(payload, true);
+            const confirmed = window.confirm(message);
+            if (confirmed) {
+                confirmHandler();
             } else {
-                pendingBlockPayload = null;
+                cancelHandler();
             }
             return;
         }
 
+        pendingBlockHandlers = {
+            onConfirm: confirmHandler,
+            onCancel: cancelHandler,
+        };
+
+        if (blockWarningTitle) {
+            blockWarningTitle.textContent = title || defaultBlockWarningTitle;
+        }
+        if (confirmBlockOverride) {
+            confirmBlockOverride.textContent = confirmLabel || defaultBlockWarningConfirmLabel || 'Trotzdem speichern';
+        }
         blockWarningText.textContent = message;
         blockWarningModal.hidden = false;
     }
 
     function closeBlockWarning() {
+        hideBlockWarningModal();
+        if (pendingBlockHandlers && typeof pendingBlockHandlers.onCancel === 'function') {
+            const cancelFn = pendingBlockHandlers.onCancel;
+            pendingBlockHandlers = null;
+            cancelFn();
+        } else {
+            pendingBlockHandlers = null;
+            pendingBlockPayload = null;
+        }
+    }
+
+    function hideBlockWarningModal() {
         if (blockWarningModal) {
             blockWarningModal.hidden = true;
         }
-        pendingBlockPayload = null;
+        if (blockWarningTitle) {
+            blockWarningTitle.textContent = defaultBlockWarningTitle;
+        }
+        if (confirmBlockOverride) {
+            confirmBlockOverride.textContent = defaultBlockWarningConfirmLabel || confirmBlockOverride.textContent;
+        }
     }
 
     function updateLicenseAgeState() {
