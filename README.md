@@ -11,6 +11,17 @@ Diese Anwendung ermöglicht die Verwaltung der Jahreslizenzen des Wörderner Fis
 - Zentrale Formularvalidierung mit sofortigem Feedback.
 - PLZ-Autovervollständigung über die `plz_orte`-Tabelle.
 
+## Lizenztypen
+
+Folgende Lizenzarten stehen standardmäßig zur Verfügung und können jährlich bepreist werden:
+
+- Angel
+- Daubel
+- Boot
+- Intern (alle Optionen)
+- Kinder
+- Jugend
+
 ## Installation
 
 1. `schema.sql` einspielen:

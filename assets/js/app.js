@@ -23,6 +23,8 @@
         Jugend: 'Jugendlizenz',
     };
 
+    const BOAT_LICENSE_TYPES = new Set(['Boot', 'Intern']);
+
     const licenseFields = {
         id: document.getElementById('licenseId'),
         licenseeId: document.getElementById('licenseeId'),
@@ -208,7 +210,7 @@
             if (LICENSE_PRICES[type]) {
                 licenseFields.cost.value = Number(LICENSE_PRICES[type]).toFixed(2);
             }
-            toggleBoat(type === 'Boot');
+            toggleBoat(BOAT_LICENSE_TYPES.has(type));
             updateTotal();
             updateLicenseAgeState();
         });
@@ -551,7 +553,7 @@
         licenseFields.notes.value = data.lizenz_notizen || '';
         licenseFields.boatNumber.value = data.bootnummer || '';
         licenseFields.boatNotes.value = data.boot_notizen || '';
-        toggleBoat(data.lizenztyp === 'Boot');
+        toggleBoat(BOAT_LICENSE_TYPES.has(data.lizenztyp));
         updateLicenseAgeState();
     }
 
