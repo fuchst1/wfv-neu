@@ -13,6 +13,8 @@ if (!$currentYear) {
 $referenceYear = $years ? max($years) : $currentYear;
 $prices = $referenceYear ? get_license_prices((int)$referenceYear) : [];
 $yearClosures = get_year_closures();
+$licenseTypes = license_types();
+$licenseTypeLabels = license_type_labels();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -111,10 +113,10 @@ $yearClosures = get_year_closures();
                 </label>
                 <p>Bitte Preise für jede Lizenzart festlegen:</p>
                 <div class="form-grid">
-                    <?php $types = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend']; ?>
-                    <?php foreach ($types as $type): ?>
-                        <label><?= $type ?> (€)
-                            <input type="number" class="price-input" data-type="<?= $type ?>" step="0.01" min="0" required>
+                    <?php foreach ($licenseTypes as $type): ?>
+                        <?php $label = $licenseTypeLabels[$type] ?? $type; ?>
+                        <label><?= htmlspecialchars($label) ?> (€)
+                            <input type="number" class="price-input" data-type="<?= htmlspecialchars($type) ?>" step="0.01" min="0" required>
                         </label>
                     <?php endforeach; ?>
                 </div>

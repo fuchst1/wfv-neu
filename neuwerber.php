@@ -18,6 +18,8 @@ $latestYear = $years ? max($years) : null;
 
 $newcomers = get_newcomers();
 $prices = get_license_prices($currentYear);
+$licenseTypes = license_types();
+$licenseTypeLabels = license_type_labels();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -190,11 +192,13 @@ $prices = get_license_prices($currentYear);
                     <label>Lizenztyp
                         <select id="assignType" data-validate="required" required>
                             <option value="">– bitte wählen –</option>
-                            <option value="Angel" selected>Angel</option>
-                            <option value="Daubel">Daubel</option>
-                            <option value="Boot">Boot</option>
-                            <option value="Kinder">Kinder</option>
-                            <option value="Jugend">Jugend</option>
+                            <?php foreach ($licenseTypes as $typeOption): ?>
+                                <?php
+                                    $label = $licenseTypeLabels[$typeOption] ?? $typeOption;
+                                    $selected = $typeOption === 'Angel' ? ' selected' : '';
+                                ?>
+                                <option value="<?= htmlspecialchars($typeOption) ?>"<?= $selected ?>><?= htmlspecialchars($label) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </label>
                     <label>Kosten (€)

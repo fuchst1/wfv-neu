@@ -30,6 +30,61 @@ function boats_table(): string
     return 'boote';
 }
 
+function license_types(): array
+{
+    return ['Angel', 'Daubel', 'Boot', 'Intern', 'Kinder', 'Jugend'];
+}
+
+function license_type_labels(): array
+{
+    return [
+        'Angel' => 'Angel',
+        'Daubel' => 'Daubel',
+        'Boot' => 'Boot',
+        'Intern' => 'Intern (alle Optionen)',
+        'Kinder' => 'Kinder',
+        'Jugend' => 'Jugend',
+    ];
+}
+
+function boat_license_types(): array
+{
+    return ['Boot', 'Intern'];
+}
+
+function quote_list(PDO $pdo, array $values): string
+{
+    return implode(', ', array_map(fn ($value): string => $pdo->quote((string)$value), $values));
+}
+
+function ensure_license_price_enum(?PDO $pdo = null): void
+{
+    $pdo = $pdo ?? get_pdo();
+    $columnStmt = $pdo->query("SHOW COLUMNS FROM `lizenzpreise` LIKE 'lizenztyp'");
+    $needsAlter = true;
+    if ($columnStmt !== false) {
+        $column = $columnStmt->fetch(PDO::FETCH_ASSOC);
+        if ($column && isset($column['Type'])) {
+            $typeDefinition = (string)$column['Type'];
+            $needsAlter = false;
+            foreach (license_types() as $type) {
+                $escaped = "'" . str_replace("'", "''", $type) . "'";
+                if (strpos($typeDefinition, $escaped) === false) {
+                    $needsAlter = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!$needsAlter) {
+        return;
+    }
+
+    $enumValues = quote_list($pdo, license_types());
+    $pdo->exec("ALTER TABLE `lizenzpreise` MODIFY lizenztyp ENUM({$enumValues}) NOT NULL");
+}
+
 function blocklist_table(): string
 {
     return 'sperrliste';
@@ -123,10 +178,12 @@ function ensure_year_exists(int $year): bool
     $pdo = get_pdo();
     $licenseTable = license_table($year);
 
+    $enumValues = quote_list($pdo, license_types());
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS {$licenseTable} (
         id INT PRIMARY KEY AUTO_INCREMENT,
         lizenznehmer_id INT NOT NULL,
-        lizenztyp ENUM('Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend') NOT NULL,
+        lizenztyp ENUM({$enumValues}) NOT NULL,
         kosten DECIMAL(10,2) NOT NULL,
         trinkgeld DECIMAL(10,2) DEFAULT 0.00,
         gesamt DECIMAL(10,2) NOT NULL,
@@ -135,6 +192,28 @@ function ensure_year_exists(int $year): bool
         erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $quotedLicenseTable = sprintf('`%s`', str_replace('`', '``', $licenseTable));
+    $columnStmt = $pdo->query("SHOW COLUMNS FROM {$quotedLicenseTable} LIKE 'lizenztyp'");
+    $needsAlter = true;
+    if ($columnStmt !== false) {
+        $column = $columnStmt->fetch(PDO::FETCH_ASSOC);
+        if ($column && isset($column['Type'])) {
+            $typeDefinition = (string)$column['Type'];
+            $needsAlter = false;
+            foreach (license_types() as $type) {
+                $escaped = "'" . str_replace("'", "''", $type) . "'";
+                if (strpos($typeDefinition, $escaped) === false) {
+                    $needsAlter = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if ($needsAlter) {
+        $pdo->exec("ALTER TABLE {$quotedLicenseTable} MODIFY lizenztyp ENUM({$enumValues}) NOT NULL");
+    }
 
     ensure_boats_table_exists();
 
@@ -304,6 +383,7 @@ function delete_blocklist_entry(int $id): bool
 function get_license_prices(int $year): array
 {
     $pdo = get_pdo();
+    ensure_license_price_enum($pdo);
     $stmt = $pdo->prepare('SELECT lizenztyp, preis FROM lizenzpreise WHERE jahr = :jahr');
     $stmt->execute(['jahr' => $year]);
     $prices = $stmt->fetchAll();
@@ -438,9 +518,11 @@ function get_boats_overview(): array
     $years = available_years();
     rsort($years);
 
+    $boatTypeList = quote_list($pdo, boat_license_types());
+
     foreach ($years as $year) {
         $licenseTable = license_table($year);
-        $stmt = $pdo->query("SELECT lizenznehmer_id, id, notizen, zahlungsdatum FROM {$licenseTable} WHERE lizenztyp = 'Boot'");
+        $stmt = $pdo->query("SELECT lizenznehmer_id, id, notizen, zahlungsdatum FROM {$licenseTable} WHERE lizenztyp IN ({$boatTypeList})");
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $licenseeId = (int)$row['lizenznehmer_id'];
             if (!isset($assignments[$licenseeId])) {

@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS jahresabschluesse (
 
 CREATE TABLE IF NOT EXISTS lizenzpreise (
     jahr INT,
-    lizenztyp ENUM('Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend') NOT NULL,
+    lizenztyp ENUM('Angel', 'Daubel', 'Boot', 'Intern', 'Kinder', 'Jugend') NOT NULL,
     preis DECIMAL(10,2) NOT NULL,
     PRIMARY KEY (jahr, lizenztyp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -76,7 +76,7 @@ SET @licenseTable := CONCAT('lizenzen_', @jahr);
 SET @sql := CONCAT('CREATE TABLE IF NOT EXISTS ', @licenseTable, ' (
     id INT PRIMARY KEY AUTO_INCREMENT,
     lizenznehmer_id INT NOT NULL,
-    lizenztyp ENUM("Angel", "Daubel", "Boot", "Kinder", "Jugend") NOT NULL,
+    lizenztyp ENUM("Angel", "Daubel", "Boot", "Intern", "Kinder", "Jugend") NOT NULL,
     kosten DECIMAL(10,2) NOT NULL,
     trinkgeld DECIMAL(10,2) DEFAULT 0.00,
     gesamt DECIMAL(10,2) NOT NULL,
@@ -93,6 +93,7 @@ INSERT INTO lizenzpreise (jahr, lizenztyp, preis) VALUES
     (@jahr, 'Angel', 60.00),
     (@jahr, 'Daubel', 45.00),
     (@jahr, 'Boot', 30.00),
+    (@jahr, 'Intern', 0.00),
     (@jahr, 'Kinder', 15.00),
     (@jahr, 'Jugend', 25.00)
 ON DUPLICATE KEY UPDATE preis = VALUES(preis);

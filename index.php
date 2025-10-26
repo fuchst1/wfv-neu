@@ -18,6 +18,8 @@ $prices = get_license_prices($currentYear);
 $yearOverview = get_year_overview($currentYear);
 $yearClosure = get_year_closure($currentYear);
 $isYearClosed = $yearClosure !== null;
+$licenseTypes = license_types();
+$licenseTypeLabels = license_type_labels();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -243,11 +245,10 @@ $isYearClosed = $yearClosure !== null;
                     <label>Lizenztyp
                         <select id="lizenztyp" data-validate="required" required>
                             <option value="">– bitte wählen –</option>
-                            <option value="Angel">Angel</option>
-                            <option value="Daubel">Daubel</option>
-                            <option value="Boot">Boot</option>
-                            <option value="Kinder">Kinder</option>
-                            <option value="Jugend">Jugend</option>
+                            <?php foreach ($licenseTypes as $typeOption): ?>
+                                <?php $label = $licenseTypeLabels[$typeOption] ?? $typeOption; ?>
+                                <option value="<?= htmlspecialchars($typeOption) ?>"><?= htmlspecialchars($label) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </label>
                     <label>Kosten (€)
@@ -329,11 +330,10 @@ $isYearClosed = $yearClosure !== null;
                     <label>Lizenztyp
                         <select id="extendType" data-validate="required" required>
                             <option value="">– bitte wählen –</option>
-                            <option value="Angel">Angel</option>
-                            <option value="Daubel">Daubel</option>
-                            <option value="Boot">Boot</option>
-                            <option value="Kinder">Kinder</option>
-                            <option value="Jugend">Jugend</option>
+                            <?php foreach ($licenseTypes as $typeOption): ?>
+                                <?php $label = $licenseTypeLabels[$typeOption] ?? $typeOption; ?>
+                                <option value="<?= htmlspecialchars($typeOption) ?>"><?= htmlspecialchars($label) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </label>
                     <?php if (!$extendYears): ?>

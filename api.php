@@ -177,7 +177,14 @@ function save_license(): void
     $notizen = $notizenRaw === '' ? null : $notizenRaw;
     $gesamt = $kosten + $trinkgeld;
 
+    $allowedTypes = license_types();
+    if (!in_array($lizenztyp, $allowedTypes, true)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiger Lizenztyp.']);
+        return;
+    }
+
     $pdo = get_pdo();
+    ensure_license_price_enum($pdo);
     $pdo->beginTransaction();
 
     try {
@@ -242,7 +249,7 @@ function save_license(): void
         $boatNotesRaw = isset($boatPayload['notizen']) ? trim((string)$boatPayload['notizen']) : '';
         $boatNotes = $boatNotesRaw === '' ? null : $boatNotesRaw;
 
-        if ($lizenztyp === 'Boot') {
+        if (in_array($lizenztyp, boat_license_types(), true)) {
             $stmt = $pdo->prepare("SELECT id FROM {$boatTable} WHERE lizenznehmer_id = :id ORDER BY id ASC LIMIT 1");
             $stmt->execute(['id' => $licenseeId]);
             $boatId = $stmt->fetchColumn();
@@ -385,11 +392,14 @@ function get_boat_licenses(): void
     ensure_year_exists($year);
     $licenseTable = license_table($year);
 
+    $boatTypeList = quote_list($pdo, boat_license_types());
+
     $sql = "SELECT DISTINCT ln.id, ln.vorname, ln.nachname, ln.telefon, ln.email,
                    (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boat_id,
                    (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer
             FROM {$licenseTable} l
             JOIN lizenznehmer ln ON ln.id = l.lizenznehmer_id
+            WHERE l.lizenztyp IN ({$boatTypeList})
             ORDER BY ln.nachname, ln.vorname, ln.id";
 
     $stmt = $pdo->query($sql);
@@ -567,7 +577,7 @@ function move_license(): void
         }
     }
 
-    $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
+    $allowedTypes = license_types();
     $type = $data['lizenztyp'] ?? $row['lizenztyp'];
     if (!in_array($type, $allowedTypes, true)) {
         $type = $row['lizenztyp'];
@@ -614,12 +624,17 @@ function create_year(): void
     ensure_year_exists($year);
 
     $pdo = get_pdo();
+    ensure_license_price_enum($pdo);
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare('DELETE FROM lizenzpreise WHERE jahr = :jahr');
         $stmt->execute(['jahr' => $year]);
         $stmt = $pdo->prepare('INSERT INTO lizenzpreise (jahr, lizenztyp, preis) VALUES (:jahr, :typ, :preis)');
+        $allowedTypes = license_types();
         foreach ($data['preise'] as $type => $price) {
+            if (!in_array($type, $allowedTypes, true)) {
+                continue;
+            }
             $stmt->execute([
                 'jahr' => $year,
                 'typ' => $type,
@@ -961,7 +976,7 @@ function assign_newcomer(): void
     $date = $data['zahlungsdatum'] ?? null;
     $notes = $data['notizen'] ?? null;
 
-    $allowedTypes = ['Angel', 'Daubel', 'Boot', 'Kinder', 'Jugend'];
+    $allowedTypes = license_types();
     $force = !empty($data['force']);
     if ($applicantId <= 0 || $year < 2000 || !in_array($type, $allowedTypes, true) || $cost === null || $tip === null) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
