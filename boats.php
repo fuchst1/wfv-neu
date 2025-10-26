@@ -129,7 +129,7 @@ $boats = get_boats_overview();
             <input type="hidden" id="boatId">
             <section class="form-section">
                 <label>Bootsnummer
-                    <input type="text" id="boatNumber" data-validate="required" required>
+                    <input type="text" id="boatNumber">
                 </label>
                 <label>Bootsnotizen
                     <textarea id="boatNotes" rows="3"></textarea>
