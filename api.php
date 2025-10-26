@@ -485,6 +485,7 @@ function move_license(): void
     $fromYear = (int)($data['from_year'] ?? 0);
     $toYear = (int)($data['to_year'] ?? 0);
     $licenseId = (int)($data['license_id'] ?? 0);
+    $force = !empty($data['force']);
     if ($fromYear < 2000 || $toYear < 2000 || $licenseId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
@@ -547,7 +548,7 @@ function move_license(): void
         $licenseNumber = trim((string)($licenseeRow['fischerkartennummer'] ?? ''));
     }
 
-    if ($licenseNumber !== '') {
+    if ($licenseNumber !== '' && !$force) {
         $licenseNumberExpr = $hasLicenseNumberColumn
             ? "COALESCE(NULLIF(ln.lizenznummer, ''), NULLIF(ln.fischerkartennummer, ''))"
             : "NULLIF(ln.fischerkartennummer, '')";
@@ -561,7 +562,9 @@ function move_license(): void
         if ((int)$duplicateStmt->fetchColumn() > 0) {
             echo json_encode([
                 'success' => false,
+                'duplicate' => true,
                 'message' => 'Für diese Lizenznummer existiert im Zieljahr bereits eine Lizenz.',
+                'license_number' => $licenseNumber,
             ]);
             return;
         }
