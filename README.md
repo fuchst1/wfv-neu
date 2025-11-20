@@ -18,7 +18,7 @@ Folgende Lizenzarten stehen standardmäßig zur Verfügung und können jährlich
 - Angel
 - Daubel
 - Boot
-- Intern (alle Optionen)
+- Intern
 - Kinder
 - Jugend
 
