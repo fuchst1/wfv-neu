@@ -418,7 +418,7 @@ function get_newcomers(): array
 {
     $pdo = get_pdo();
     ensure_person_birthdate_columns();
-    $stmt = $pdo->query('SELECT * FROM bewerber ORDER BY bewerbungsdatum DESC, nachname, vorname');
+    $stmt = $pdo->query('SELECT * FROM bewerber ORDER BY bewerbungsdatum ASC, nachname, vorname');
     return $stmt->fetchAll();
 }
 
