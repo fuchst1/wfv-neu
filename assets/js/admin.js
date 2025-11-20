@@ -2,6 +2,7 @@
     const createYearModal = document.getElementById('createYearModal');
     const deleteYearModal = document.getElementById('deleteYearModal');
     const closeYearModal = document.getElementById('closeYearModal');
+    const yearDetailsModal = document.getElementById('yearDetailsModal');
     const createYearForm = document.getElementById('createYearForm');
     const createYearButton = document.getElementById('openCreateYear');
     const yearInput = document.getElementById('newYear');
@@ -16,11 +17,22 @@
     const searchMessage = document.getElementById('licenseeSearchMessage');
     const searchResults = document.getElementById('licenseeSearchResults');
     const defaultSearchMessage = 'Geben Sie einen Namen ein, um die Suche zu starten.';
+    const yearDetailsYearLabel = document.getElementById('yearDetailsYearLabel');
+    const yearDetailsTableContainer = document.getElementById('yearDetailsTableContainer');
+    const yearDetailsStatus = document.getElementById('yearDetailsStatus');
 
     let pendingYearDelete = null;
     let pendingYearClose = null;
     let closeYearInFlight = false;
     let activeSearchController = null;
+    let activeOverviewAbort = null;
+
+    function formatCurrency(value) {
+        if (typeof value !== 'number' || Number.isNaN(value)) {
+            return '0,00 €';
+        }
+        return `${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+    }
 
     function updateSearchMessage(message, variant = 'info') {
         if (!searchMessage) {
@@ -291,6 +303,141 @@
         });
     }
 
+    function renderYearOverviewTable(overview) {
+        if (!yearDetailsTableContainer || !yearDetailsStatus) {
+            return;
+        }
+
+        yearDetailsTableContainer.innerHTML = '';
+
+        const types = Array.isArray(overview && overview.types) ? overview.types : [];
+        if (types.length === 0) {
+            yearDetailsStatus.textContent = 'Noch keine Lizenzen für dieses Jahr verkauft.';
+            yearDetailsStatus.hidden = false;
+            return;
+        }
+
+        yearDetailsStatus.hidden = true;
+
+        const table = document.createElement('table');
+        table.className = 'summary-table';
+
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        ['Lizenztyp', 'Anzahl', 'Summe Kosten', 'Summe Trinkgeld', 'Summe Gesamt'].forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        types.forEach(entry => {
+            const row = document.createElement('tr');
+
+            const typeCell = document.createElement('td');
+            typeCell.textContent = entry && entry.lizenztyp ? entry.lizenztyp : '–';
+            row.appendChild(typeCell);
+
+            const countCell = document.createElement('td');
+            countCell.textContent = entry && typeof entry.count === 'number' ? entry.count : 0;
+            row.appendChild(countCell);
+
+            const costCell = document.createElement('td');
+            costCell.textContent = formatCurrency(entry ? entry.sum_cost : 0);
+            row.appendChild(costCell);
+
+            const tipCell = document.createElement('td');
+            tipCell.textContent = formatCurrency(entry ? entry.sum_tip : 0);
+            row.appendChild(tipCell);
+
+            const totalCell = document.createElement('td');
+            totalCell.textContent = formatCurrency(entry ? entry.sum_total : 0);
+            row.appendChild(totalCell);
+
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        const tfoot = document.createElement('tfoot');
+        const totalRow = document.createElement('tr');
+
+        const totalLabel = document.createElement('th');
+        totalLabel.textContent = 'Gesamt';
+        totalRow.appendChild(totalLabel);
+
+        const totalCount = document.createElement('th');
+        totalCount.textContent = overview && typeof overview.total_count === 'number' ? overview.total_count : 0;
+        totalRow.appendChild(totalCount);
+
+        const totalCost = document.createElement('th');
+        totalCost.textContent = formatCurrency(overview ? overview.total_cost : 0);
+        totalRow.appendChild(totalCost);
+
+        const totalTip = document.createElement('th');
+        totalTip.textContent = formatCurrency(overview ? overview.total_tip : 0);
+        totalRow.appendChild(totalTip);
+
+        const totalCombined = document.createElement('th');
+        totalCombined.textContent = formatCurrency(overview ? overview.total_combined : 0);
+        totalRow.appendChild(totalCombined);
+
+        tfoot.appendChild(totalRow);
+        table.appendChild(tfoot);
+
+        yearDetailsTableContainer.appendChild(table);
+    }
+
+    function showYearOverview(year) {
+        if (!yearDetailsModal || !yearDetailsStatus || !yearDetailsYearLabel) {
+            return;
+        }
+
+        if (activeOverviewAbort) {
+            activeOverviewAbort.abort();
+        }
+
+        yearDetailsYearLabel.textContent = year ? year.toString() : '';
+        yearDetailsModal.hidden = false;
+        yearDetailsStatus.textContent = 'Daten werden geladen…';
+        yearDetailsStatus.hidden = false;
+        if (yearDetailsTableContainer) {
+            yearDetailsTableContainer.innerHTML = '';
+        }
+
+        const controller = new AbortController();
+        activeOverviewAbort = controller;
+
+        const params = new URLSearchParams({ action: 'year_overview', year: String(year) });
+        fetch(`api.php?${params.toString()}`, { signal: controller.signal })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Netzwerkfehler');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data || data.success === false) {
+                    const message = data && data.message ? data.message : 'Die Übersicht konnte nicht geladen werden.';
+                    yearDetailsStatus.textContent = message;
+                    yearDetailsStatus.hidden = false;
+                    return;
+                }
+                renderYearOverviewTable(data.overview || {});
+            })
+            .catch(error => {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+                yearDetailsStatus.textContent = 'Die Übersicht konnte nicht geladen werden.';
+                yearDetailsStatus.hidden = false;
+            })
+            .finally(() => {
+                activeOverviewAbort = null;
+            });
+    }
+
     function markYearAsClosed(year, closure) {
         if (!year) {
             return;
@@ -328,11 +475,15 @@
     }
 
     function closeModals() {
-        [createYearModal, deleteYearModal, closeYearModal].forEach(modal => {
+        [createYearModal, deleteYearModal, closeYearModal, yearDetailsModal].forEach(modal => {
             if (modal) {
                 modal.hidden = true;
             }
         });
+        if (activeOverviewAbort) {
+            activeOverviewAbort.abort();
+            activeOverviewAbort = null;
+        }
         pendingYearDelete = null;
         pendingYearClose = null;
     }
@@ -370,6 +521,15 @@
 
     document.querySelectorAll('[data-close]').forEach(button => {
         button.addEventListener('click', closeModals);
+    });
+
+    document.querySelectorAll('[data-year-details]').forEach(button => {
+        button.addEventListener('click', () => {
+            const { yearDetails } = button.dataset;
+            const year = parseInt(yearDetails, 10);
+            if (!year) return;
+            showYearOverview(year);
+        });
     });
 
     if (createYearButton) {
