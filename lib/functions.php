@@ -447,6 +447,16 @@ function get_licensees_for_year(int $year): array
         return $licensees;
     }
 
+    foreach ($licensees as &$licensee) {
+        $licenseNumberRaw = isset($licensee['lizenznummer']) ? (string)$licensee['lizenznummer'] : '';
+        $licenseNumber = trim($licenseNumberRaw) !== ''
+            ? $licenseNumberRaw
+            : trim((string)($licensee['fischerkartennummer'] ?? ''));
+
+        $licensee['lizenznummer'] = $licenseNumber;
+    }
+    unset($licensee);
+
     $licenseeIds = [];
     foreach ($licensees as $row) {
         if (isset($row['lizenznehmer_id'])) {
