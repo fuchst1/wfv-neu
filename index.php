@@ -124,7 +124,13 @@ $licenseTypeLabels = license_type_labels();
                                 <div><strong>Gesamt: <?= format_currency((float)$row['gesamt']) ?> €</strong></div>
                             </td>
                             <td>
-                                <?= nl2br(htmlspecialchars($row['lizenz_notizen'] ?? '')) ?>
+                                <?php
+                                    $licenseNotes = (string)($row['lizenz_notizen'] ?? '');
+                                    $licenseNotesPreview = truncate_words($licenseNotes, 10);
+                                ?>
+                                <div class="notes" title="<?= htmlspecialchars($licenseNotes) ?>">
+                                    <?= $licenseNotesPreview !== '' ? nl2br(htmlspecialchars($licenseNotesPreview)) : '–' ?>
+                                </div>
                                 <?php if ($row['lizenztyp'] === 'Boot' && ($row['bootnummer'] || $row['boot_notizen'])): ?>
                                     <details>
                                         <summary>Boot</summary>
