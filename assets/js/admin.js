@@ -47,22 +47,25 @@
         searchResults.hidden = true;
     }
 
-    function resetSearch() {
+    function resetSearch(options = {}) {
+        const { skipFormReset = false } = options;
+
         if (activeSearchController) {
             activeSearchController.abort();
             activeSearchController = null;
         }
 
-        if (searchForm) {
+        if (searchForm && !skipFormReset) {
             searchForm.reset();
-        }
-
-        if (searchInput) {
-            searchInput.value = '';
         }
 
         clearSearchResults();
         updateSearchMessage(defaultSearchMessage);
+
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
     }
 
     function formatCurrencyValue(entry, key) {
@@ -549,12 +552,20 @@
                     activeSearchController = null;
                 });
         });
+
+        searchForm.addEventListener('reset', event => {
+            event.preventDefault();
+            resetSearch({ skipFormReset: true });
+        });
     }
 
     if (searchReset) {
-        searchReset.addEventListener('click', event => {
-            event.preventDefault();
-            resetSearch();
+        searchReset.addEventListener('click', () => {
+            if (searchForm) {
+                searchForm.reset();
+            } else {
+                resetSearch();
+            }
         });
     }
 
