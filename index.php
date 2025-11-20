@@ -119,9 +119,9 @@ $licenseTypeLabels = license_type_labels();
                             ?>
                             <td><span class="badge badge-license <?= htmlspecialchars($licenseTypeClass) ?>"><?= htmlspecialchars($licenseTypeLabel) ?></span></td>
                             <td>
-                                <div><strong>Lizenzkosten:</strong> <?= format_currency((float)$row['kosten']) ?> €</div>
-                                <div><strong>Trinkgeld:</strong> <?= format_currency((float)$row['trinkgeld']) ?> €</div>
-                                <div><strong>Gesamt:</strong> <?= format_currency((float)$row['gesamt']) ?> €</div>
+                                <div>Lizenzkosten: <?= format_currency((float)$row['kosten']) ?> €</div>
+                                <div>Trinkgeld: <?= format_currency((float)$row['trinkgeld']) ?> €</div>
+                                <div><strong>Gesamt: <?= format_currency((float)$row['gesamt']) ?> €</strong></div>
                             </td>
                             <td>
                                 <?= nl2br(htmlspecialchars($row['lizenz_notizen'] ?? '')) ?>
