@@ -560,12 +560,9 @@
     }
 
     if (searchReset) {
-        searchReset.addEventListener('click', () => {
-            if (searchForm) {
-                searchForm.reset();
-            } else {
-                resetSearch();
-            }
+        searchReset.addEventListener('click', event => {
+            event.preventDefault();
+            resetSearch();
         });
     }
 
