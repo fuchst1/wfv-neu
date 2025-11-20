@@ -47,6 +47,18 @@ function license_type_labels(): array
     ];
 }
 
+function license_type_class(string $type): string
+{
+    $normalized = strtolower($type);
+    $allowedTypes = array_map('strtolower', license_types());
+
+    if (!in_array($normalized, $allowedTypes, true)) {
+        return 'badge-license-default';
+    }
+
+    return 'badge-license-' . $normalized;
+}
+
 function boat_license_types(): array
 {
     return ['Boot', 'Intern'];

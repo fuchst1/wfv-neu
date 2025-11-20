@@ -109,7 +109,12 @@ $licenseTypeLabels = license_type_labels();
                                     <br><small>Vorjahre: <?= htmlspecialchars(implode(', ', $row['previous_license_years'])) ?></small>
                                 <?php endif; ?>
                             </td>
-                            <td><?= htmlspecialchars($row['lizenztyp']) ?></td>
+                            <?php
+                                $licenseType = (string)($row['lizenztyp'] ?? '');
+                                $licenseTypeLabel = $licenseTypeLabels[$licenseType] ?? $licenseType;
+                                $licenseTypeClass = license_type_class($licenseType);
+                            ?>
+                            <td><span class="badge badge-license <?= htmlspecialchars($licenseTypeClass) ?>"><?= htmlspecialchars($licenseTypeLabel) ?></span></td>
                             <td><?= format_currency((float)$row['kosten']) ?> €</td>
                             <td><?= format_currency((float)$row['trinkgeld']) ?> €</td>
                             <td><?= format_currency((float)$row['gesamt']) ?> €</td>
