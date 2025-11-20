@@ -20,6 +20,21 @@ $newcomers = get_newcomers();
 $prices = get_license_prices($currentYear);
 $licenseTypes = license_types();
 $licenseTypeLabels = license_type_labels();
+
+function truncate_words($text, $limit = 10)
+{
+    $text = trim((string)$text);
+    if ($text === '') {
+        return '';
+    }
+
+    $words = preg_split('/\s+/', $text);
+    if (!$words || count($words) <= $limit) {
+        return $text;
+    }
+
+    return implode(' ', array_slice($words, 0, $limit)) . ' …';
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -95,7 +110,13 @@ $licenseTypeLabels = license_type_labels();
                             <?php endif; ?>
                         </td>
                         <td><?= ($formattedDate = format_date($applicant['bewerbungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
-                        <td><?= nl2br(htmlspecialchars($applicant['notizen'] ?? '')) ?></td>
+                        <?php
+                            $notes = $applicant['notizen'] ?? '';
+                            $notesPreview = truncate_words($notes, 10);
+                        ?>
+                        <td class="notes" title="<?= htmlspecialchars($notes) ?>">
+                            <?= $notesPreview ? nl2br(htmlspecialchars($notesPreview)) : '–' ?>
+                        </td>
                         <td class="actions">
                             <button class="primary assign">Lizenz zuweisen</button>
                             <button class="secondary edit">Bearbeiten</button>

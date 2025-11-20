@@ -595,7 +595,10 @@
         dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
 
         const notesCell = document.createElement('td');
-        notesCell.innerHTML = escapeHtml(applicant.notizen || '').replace(/\n/g, '<br>');
+        notesCell.className = 'notes';
+        const notesContent = renderNotesPreview(applicant.notizen);
+        notesCell.innerHTML = notesContent.html;
+        notesCell.title = notesContent.title;
 
         const actionCell = document.createElement('td');
         row.appendChild(nameCell);
@@ -625,10 +628,27 @@
             dateCell.textContent = formatDateDisplay(applicant.bewerbungsdatum);
         }
         if (notesCell) {
-            notesCell.innerHTML = escapeHtml(applicant.notizen || '').replace(/\n/g, '<br>');
+            const notesContent = renderNotesPreview(applicant.notizen);
+            notesCell.innerHTML = notesContent.html;
+            notesCell.title = notesContent.title;
         }
         populateActionCell(actionCell, row);
         refreshTableSearch();
+    }
+
+    function renderNotesPreview(noteText) {
+        const text = (noteText || '').trim();
+        if (!text) {
+            return { html: '–', title: '' };
+        }
+
+        const words = text.split(/\s+/);
+        const truncated = words.length > 10 ? `${words.slice(0, 10).join(' ')} …` : text;
+
+        return {
+            html: escapeHtml(truncated).replace(/\n/g, '<br>'),
+            title: text,
+        };
     }
 
     function renderApplicantContact(applicant) {
