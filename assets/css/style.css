@@ -253,6 +253,12 @@ tbody td small {
     font-size: 0.9rem;
 }
 
+#newcomerTable td.notes {
+    max-width: 18rem;
+    white-space: normal;
+    word-break: break-word;
+}
+
 .empty {
     text-align: center;
     color: var(--muted);
