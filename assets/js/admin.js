@@ -12,8 +12,10 @@
     const confirmCloseYearButton = document.getElementById('confirmCloseYear');
     const searchForm = document.getElementById('licenseeSearchForm');
     const searchInput = document.getElementById('licenseeSearchInput');
+    const searchReset = document.getElementById('licenseeSearchReset');
     const searchMessage = document.getElementById('licenseeSearchMessage');
     const searchResults = document.getElementById('licenseeSearchResults');
+    const defaultSearchMessage = 'Geben Sie einen Namen ein, um die Suche zu starten.';
 
     let pendingYearDelete = null;
     let pendingYearClose = null;
@@ -43,6 +45,24 @@
 
         searchResults.innerHTML = '';
         searchResults.hidden = true;
+    }
+
+    function resetSearch() {
+        if (activeSearchController) {
+            activeSearchController.abort();
+            activeSearchController = null;
+        }
+
+        if (searchForm) {
+            searchForm.reset();
+        }
+
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        clearSearchResults();
+        updateSearchMessage(defaultSearchMessage);
     }
 
     function formatCurrencyValue(entry, key) {
@@ -530,4 +550,13 @@
                 });
         });
     }
+
+    if (searchReset) {
+        searchReset.addEventListener('click', event => {
+            event.preventDefault();
+            resetSearch();
+        });
+    }
+
+    updateSearchMessage(defaultSearchMessage);
 })();

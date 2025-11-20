@@ -40,11 +40,7 @@ $licenseTypeLabels = license_type_labels();
 <main>
     <section class="dashboard">
         <div>
-            <h2>Jahre verwalten</h2>
-            <p>Verfügbare Jahre: <strong><?= count($years) ?></strong></p>
-        </div>
-        <div>
-            <button type="button" class="primary" id="openCreateYear">Neues Jahr anlegen</button>
+            <h2>Administrationsbereich</h2>
         </div>
     </section>
 
@@ -54,13 +50,22 @@ $licenseTypeLabels = license_type_labels();
             <label class="sr-only" for="licenseeSearchInput">Lizenznehmer suchen</label>
             <input type="search" id="licenseeSearchInput" name="query" placeholder="Name, Lizenznummer oder Ort" spellcheck="false" aria-describedby="licenseeSearchMessage">
             <button type="submit" class="primary">Suchen</button>
+            <button type="button" class="secondary" id="licenseeSearchReset">Zurücksetzen</button>
         </form>
         <p id="licenseeSearchMessage" class="search-message">Geben Sie einen Namen ein, um die Suche zu starten.</p>
         <div id="licenseeSearchResults" class="licensee-results" hidden></div>
     </section>
 
     <section class="table-section">
-        <h3>Bestehende Jahre</h3>
+        <div class="section-header">
+            <div>
+                <h3>Bestehende Jahre</h3>
+                <p>Verfügbare Jahre: <strong><?= count($years) ?></strong></p>
+            </div>
+            <div>
+                <button type="button" class="primary" id="openCreateYear">Neues Jahr anlegen</button>
+            </div>
+        </div>
         <?php if (!$years): ?>
             <p class="empty">Es wurden noch keine Jahre angelegt.</p>
         <?php else: ?>
