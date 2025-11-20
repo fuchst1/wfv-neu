@@ -47,9 +47,6 @@ $licenseTypeLabels = license_type_labels();
             <h2>Neuwerber insgesamt</h2>
             <p>Anzahl: <strong id="newcomerCount"><?= count($newcomers) ?></strong></p>
         </div>
-        <div>
-            <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
-        </div>
     </section>
 
     <section class="table-section">
@@ -58,6 +55,9 @@ $licenseTypeLabels = license_type_labels();
                 <span class="table-search-label">Suche:</span>
                 <input type="search" id="newcomerSearch" placeholder="Name, Ort oder Notizen durchsuchen …" data-table-search="#newcomerTable">
             </label>
+            <div class="table-actions">
+                <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
+            </div>
         </div>
         <table id="newcomerTable">
             <thead>

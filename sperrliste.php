@@ -38,9 +38,6 @@ $blocklistEntries = get_blocklist_entries();
             <h2>Gesperrte Lizenznehmer</h2>
             <p>Einträge gesamt: <strong><?= count($blocklistEntries) ?></strong></p>
         </div>
-        <div>
-            <button type="button" class="primary" id="openAddBlockEntry">Person hinzufügen</button>
-        </div>
     </section>
 
     <section class="table-section">
@@ -49,6 +46,9 @@ $blocklistEntries = get_blocklist_entries();
                 <span class="table-search-label">Suche:</span>
                 <input type="search" id="blocklistSearch" placeholder="Name oder Lizenznummer …" data-table-search="#blocklistTable">
             </label>
+            <div class="table-actions">
+                <button type="button" class="primary" id="openAddBlockEntry">Person hinzufügen</button>
+            </div>
         </div>
         <table id="blocklistTable">
             <thead>
