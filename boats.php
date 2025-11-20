@@ -43,9 +43,6 @@ $boats = get_boats_overview();
             <h2>Alle Boote</h2>
             <p>Erfasste Boote gesamt: <strong><?= count($boats) ?></strong></p>
         </div>
-        <div>
-            <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
-        </div>
     </section>
 
     <section class="table-section">
@@ -54,6 +51,9 @@ $boats = get_boats_overview();
                 <span class="table-search-label">Suche:</span>
                 <input type="search" id="boatSearch" placeholder="Bootsnummer oder Notizen …" data-table-search="#boatTable">
             </label>
+            <div class="table-actions">
+                <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
+            </div>
         </div>
         <table id="boatTable">
             <thead>

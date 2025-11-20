@@ -53,9 +53,6 @@ $licenseTypeLabels = license_type_labels();
                 </p>
             <?php endif; ?>
         </div>
-        <div>
-            <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
-        </div>
     </section>
 
     <?php
@@ -68,6 +65,7 @@ $licenseTypeLabels = license_type_labels();
                 <input type="search" id="licenseSearch" placeholder="Lizenznehmer, Lizenztyp, Notizen …" data-table-search="#licenseTable">
             </label>
             <div class="table-actions">
+                <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=csv">CSV exportieren</a>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=xlsx">XLSX exportieren</a>
             </div>
