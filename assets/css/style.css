@@ -341,6 +341,49 @@ tr:target {
     letter-spacing: 0.03em;
 }
 
+.badge-license {
+    min-width: 6.5rem;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    background: #e8edf4;
+    color: #0f172a;
+}
+
+.badge-license-angel {
+    background: #e5f6ff;
+    color: #075985;
+}
+
+.badge-license-daubel {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.badge-license-boot {
+    background: #ecfeff;
+    color: #0f766e;
+}
+
+.badge-license-intern {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.badge-license-kinder {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.badge-license-jugend {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.badge-license-default {
+    background: #f4f4f5;
+    color: #111827;
+}
+
 .badge-closed {
     background: #fdecec;
     color: var(--danger);
