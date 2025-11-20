@@ -74,21 +74,22 @@ $licenseTypeLabels = license_type_labels();
         </div>
         <table id="licenseTable">
             <thead>
-                <tr>
-                    <th>Lizenznehmer</th>
-                    <th>Lizenztyp</th>
-                    <th>Kosten</th>
-                    <th>Trinkgeld</th>
-                    <th>Gesamt</th>
-                    <th>Zahlungsdatum</th>
-                    <th>Notizen</th>
-                    <th>Aktionen</th>
-                </tr>
+                    <tr>
+                        <th>Lizenznehmer</th>
+                        <th>Lizenznummer</th>
+                        <th>Lizenztyp</th>
+                        <th>Kosten</th>
+                        <th>Trinkgeld</th>
+                        <th>Gesamt</th>
+                        <th>Zahlungsdatum</th>
+                        <th>Notizen</th>
+                        <th>Aktionen</th>
+                    </tr>
             </thead>
             <tbody>
                 <?php if (!$licensees): ?>
                     <tr data-empty-row>
-                        <td colspan="8" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
+                        <td colspan="9" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($licensees as $row): ?>
@@ -109,6 +110,11 @@ $licenseTypeLabels = license_type_labels();
                                     <br><small>Vorjahre: <?= htmlspecialchars(implode(', ', $row['previous_license_years'])) ?></small>
                                 <?php endif; ?>
                             </td>
+                            <?php
+                                $licenseNumberRaw = $row['lizenznummer'] ?? '';
+                                $licenseNumberDisplay = trim((string)$licenseNumberRaw) !== '' ? $licenseNumberRaw : '–';
+                            ?>
+                            <td><?= htmlspecialchars($licenseNumberDisplay) ?></td>
                             <?php
                                 $licenseType = (string)($row['lizenztyp'] ?? '');
                                 $licenseTypeLabel = $licenseTypeLabels[$licenseType] ?? $licenseType;
