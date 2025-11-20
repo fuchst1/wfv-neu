@@ -20,21 +20,6 @@ $newcomers = get_newcomers();
 $prices = get_license_prices($currentYear);
 $licenseTypes = license_types();
 $licenseTypeLabels = license_type_labels();
-
-function truncate_words($text, $limit = 10)
-{
-    $text = trim((string)$text);
-    if ($text === '') {
-        return '';
-    }
-
-    $words = preg_split('/\s+/', $text);
-    if (!$words || count($words) <= $limit) {
-        return $text;
-    }
-
-    return implode(' ', array_slice($words, 0, $limit)) . ' …';
-}
 ?>
 <!DOCTYPE html>
 <html lang="de">

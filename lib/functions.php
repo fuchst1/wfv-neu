@@ -678,6 +678,21 @@ function format_date(?string $value): ?string
     return $date->format('d.m.Y');
 }
 
+function truncate_words(string $text, int $limit = 10): string
+{
+    $text = trim($text);
+    if ($text === '') {
+        return '';
+    }
+
+    $words = preg_split('/\s+/', $text);
+    if (!$words || count($words) <= $limit) {
+        return $text;
+    }
+
+    return implode(' ', array_slice($words, 0, $limit)) . ' …';
+}
+
 function calculate_age(?string $date): ?int
 {
     if ($date === null) {
