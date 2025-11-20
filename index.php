@@ -59,15 +59,17 @@ $licenseTypeLabels = license_type_labels();
         ob_start();
     ?>
     <section class="table-section">
-        <div class="table-filter">
-            <div class="table-search">
-                <label class="table-search-label" for="licenseSearch">Suche:</label>
-                <input type="search" id="licenseSearch" placeholder="Lizenznehmer, Lizenztyp, Notizen …" data-table-search="#licenseTable">
-            </div>
+        <div class="table-actions-bar">
             <div class="table-actions">
                 <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=csv">CSV exportieren</a>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=xlsx">XLSX exportieren</a>
+            </div>
+        </div>
+        <div class="table-search-row">
+            <div class="table-search">
+                <label class="table-search-label" for="licenseSearch">Suche:</label>
+                <input type="search" id="licenseSearch" placeholder="Lizenznehmer, Lizenztyp, Notizen …" data-table-search="#licenseTable">
             </div>
         </div>
         <table id="licenseTable">

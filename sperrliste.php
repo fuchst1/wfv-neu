@@ -41,13 +41,15 @@ $blocklistEntries = get_blocklist_entries();
     </section>
 
     <section class="table-section">
-        <div class="table-filter">
+        <div class="table-actions-bar">
+            <div class="table-actions">
+                <button type="button" class="primary" id="openAddBlockEntry">Person hinzufügen</button>
+            </div>
+        </div>
+        <div class="table-search-row">
             <div class="table-search">
                 <label class="table-search-label" for="blocklistSearch">Suche:</label>
                 <input type="search" id="blocklistSearch" placeholder="Name oder Lizenznummer …" data-table-search="#blocklistTable">
-            </div>
-            <div class="table-actions">
-                <button type="button" class="primary" id="openAddBlockEntry">Person hinzufügen</button>
             </div>
         </div>
         <table id="blocklistTable">
