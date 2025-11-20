@@ -50,7 +50,7 @@ $licenseTypeLabels = license_type_labels();
             <label class="sr-only" for="licenseeSearchInput">Lizenznehmer suchen</label>
             <input type="search" id="licenseeSearchInput" name="query" placeholder="Name, Lizenznummer oder Ort" spellcheck="false" aria-describedby="licenseeSearchMessage">
             <button type="submit" class="primary">Suchen</button>
-            <button type="button" class="secondary" id="licenseeSearchReset">Zurücksetzen</button>
+            <button type="reset" class="secondary" id="licenseeSearchReset">Zurücksetzen</button>
         </form>
         <p id="licenseeSearchMessage" class="search-message">Geben Sie einen Namen ein, um die Suche zu starten.</p>
         <div id="licenseeSearchResults" class="licensee-results" hidden></div>
