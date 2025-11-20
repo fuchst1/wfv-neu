@@ -47,10 +47,10 @@ $boats = get_boats_overview();
 
     <section class="table-section">
         <div class="table-filter">
-            <label class="table-search">
-                <span class="table-search-label">Suche:</span>
+            <div class="table-search">
+                <label class="table-search-label" for="boatSearch">Suche:</label>
                 <input type="search" id="boatSearch" placeholder="Bootsnummer oder Notizen …" data-table-search="#boatTable">
-            </label>
+            </div>
             <div class="table-actions">
                 <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
             </div>
