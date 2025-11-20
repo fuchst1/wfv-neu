@@ -41,7 +41,7 @@ function license_type_labels(): array
         'Angel' => 'Angel',
         'Daubel' => 'Daubel',
         'Boot' => 'Boot',
-        'Intern' => 'Intern (alle Optionen)',
+        'Intern' => 'Intern',
         'Kinder' => 'Kinder',
         'Jugend' => 'Jugend',
     ];

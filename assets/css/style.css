@@ -350,8 +350,8 @@ tr:target {
 }
 
 .badge-license-angel {
-    background: #e0f7f4;
-    color: #0f766e;
+    background: #e0ecff;
+    color: #1d4ed8;
 }
 
 .badge-license-daubel {
@@ -365,13 +365,13 @@ tr:target {
 }
 
 .badge-license-intern {
-    background: #e0ecff;
-    color: #1d4ed8;
+    background: #e7f8ed;
+    color: #15803d;
 }
 
 .badge-license-kinder {
-    background: #f0f9e8;
-    color: #3f6212;
+    background: #fff7ed;
+    color: #9a3412;
 }
 
 .badge-license-jugend {
