@@ -94,6 +94,7 @@ $licenseTypeLabels = license_type_labels();
                                 <?php endif; ?>
                             </td>
                             <td class="actions">
+                                <button type="button" class="secondary" data-year-details="<?= $year ?>">Details</button>
                                 <button type="button" class="secondary" data-close-year="<?= $year ?>"<?= $closure ? ' disabled aria-disabled="true"' : '' ?>>Jahr abschließen</button>
                                 <button type="button" class="danger" data-delete-year="<?= $year ?>"<?= $closure ? ' disabled aria-disabled="true"' : '' ?>>Jahr löschen</button>
                             </td>
@@ -104,6 +105,23 @@ $licenseTypeLabels = license_type_labels();
         <?php endif; ?>
     </section>
 </main>
+
+<div class="modal" id="yearDetailsModal" hidden>
+    <div class="modal-content">
+        <header>
+            <h2>Verkäufe nach Lizenztyp</h2>
+            <button class="close" data-close>&times;</button>
+        </header>
+        <section class="form-section">
+            <p class="muted">Jahr: <strong id="yearDetailsYearLabel"></strong></p>
+            <p id="yearDetailsStatus" class="empty">Wählen Sie ein Jahr aus, um die Details zu sehen.</p>
+            <div id="yearDetailsTableContainer"></div>
+        </section>
+        <footer class="modal-footer">
+            <button type="button" class="secondary" data-close>Schließen</button>
+        </footer>
+    </div>
+</div>
 
 <div class="modal" id="createYearModal" hidden>
     <div class="modal-content">

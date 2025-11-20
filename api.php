@@ -47,6 +47,9 @@ try {
         case 'close_year':
             close_year();
             break;
+        case 'year_overview':
+            year_overview();
+            break;
         case 'get_prices':
             get_prices();
             break;
@@ -731,6 +734,23 @@ function close_year(): void
         'success' => true,
         'closure' => $closure,
     ]);
+}
+
+function year_overview(): void
+{
+    $year = (int)($_GET['year'] ?? 0);
+    if ($year < 2000) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    if (!in_array($year, available_years(), true)) {
+        echo json_encode(['success' => false, 'message' => 'Dieses Jahr existiert nicht.']);
+        return;
+    }
+
+    $overview = get_year_overview($year);
+    echo json_encode(['success' => true, 'overview' => $overview]);
 }
 
 function get_prices(): void
