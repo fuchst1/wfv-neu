@@ -78,10 +78,7 @@ $licenseTypeLabels = license_type_labels();
                         <th>Lizenznehmer</th>
                         <th>Lizenznummer</th>
                         <th>Lizenztyp</th>
-                        <th>Kosten</th>
-                        <th>Trinkgeld</th>
-                        <th>Gesamt</th>
-                        <th>Zahlungsdatum</th>
+                        <th>Zahlung</th>
                         <th>Notizen</th>
                         <th>Aktionen</th>
                     </tr>
@@ -89,7 +86,7 @@ $licenseTypeLabels = license_type_labels();
             <tbody>
                 <?php if (!$licensees): ?>
                     <tr data-empty-row>
-                        <td colspan="9" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
+                        <td colspan="6" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($licensees as $row): ?>
@@ -121,10 +118,11 @@ $licenseTypeLabels = license_type_labels();
                                 $licenseTypeClass = license_type_class($licenseType);
                             ?>
                             <td><span class="badge badge-license <?= htmlspecialchars($licenseTypeClass) ?>"><?= htmlspecialchars($licenseTypeLabel) ?></span></td>
-                            <td><?= format_currency((float)$row['kosten']) ?> €</td>
-                            <td><?= format_currency((float)$row['trinkgeld']) ?> €</td>
-                            <td><?= format_currency((float)$row['gesamt']) ?> €</td>
-                            <td><?= ($formattedDate = format_date($row['zahlungsdatum'] ?? null)) ? htmlspecialchars($formattedDate) : '–' ?></td>
+                            <td>
+                                <div><strong>Lizenzkosten:</strong> <?= format_currency((float)$row['kosten']) ?> €</div>
+                                <div><strong>Trinkgeld:</strong> <?= format_currency((float)$row['trinkgeld']) ?> €</div>
+                                <div><strong>Gesamt:</strong> <?= format_currency((float)$row['gesamt']) ?> €</div>
+                            </td>
                             <td>
                                 <?= nl2br(htmlspecialchars($row['lizenz_notizen'] ?? '')) ?>
                                 <?php if ($row['lizenztyp'] === 'Boot' && ($row['bootnummer'] || $row['boot_notizen'])): ?>
