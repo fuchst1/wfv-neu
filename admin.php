@@ -63,7 +63,7 @@ $licenseTypeLabels = license_type_labels();
                 <p>Verfügbare Jahre: <strong><?= count($years) ?></strong></p>
             </div>
             <div>
-                <button type="button" class="primary" id="openCreateYear">Neues Jahr anlegen</button>
+                <button type="button" class="secondary" id="openCreateYear">Neues Jahr anlegen</button>
             </div>
         </div>
         <?php if (!$years): ?>

@@ -316,6 +316,14 @@ button.secondary {
     color: var(--text);
 }
 
+button.secondary.edit {
+    background: var(--gray);
+}
+
+button.secondary.edit:hover {
+    background: #e5e7eb;
+}
+
 button.danger {
     background: var(--danger);
     color: white;
