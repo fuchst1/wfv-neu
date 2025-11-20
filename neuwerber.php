@@ -50,13 +50,15 @@ $licenseTypeLabels = license_type_labels();
     </section>
 
     <section class="table-section">
-        <div class="table-filter">
+        <div class="table-actions-bar">
+            <div class="table-actions">
+                <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
+            </div>
+        </div>
+        <div class="table-search-row">
             <div class="table-search">
                 <label class="table-search-label" for="newcomerSearch">Suche:</label>
                 <input type="search" id="newcomerSearch" placeholder="Name, Ort oder Notizen durchsuchen …" data-table-search="#newcomerTable">
-            </div>
-            <div class="table-actions">
-                <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
             </div>
         </div>
         <table id="newcomerTable">
