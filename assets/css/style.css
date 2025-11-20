@@ -378,7 +378,7 @@ tr:target {
 
 .badge-license {
     min-width: 6.5rem;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 0.35rem;
     background: #e8edf4;
     color: #0f172a;
