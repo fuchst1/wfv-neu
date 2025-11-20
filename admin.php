@@ -47,7 +47,7 @@ $licenseTypeLabels = license_type_labels();
     <section class="table-section">
         <h3>Lizenznehmer-Suche</h3>
         <form id="licenseeSearchForm" class="table-search" autocomplete="off">
-            <label class="sr-only" for="licenseeSearchInput">Lizenznehmer suchen</label>
+            <label class="table-search-label" for="licenseeSearchInput">Suche:</label>
             <input type="search" id="licenseeSearchInput" name="query" placeholder="Name, Lizenznummer oder Ort" spellcheck="false" aria-describedby="licenseeSearchMessage">
             <button type="submit" class="primary">Suchen</button>
             <button type="reset" class="secondary" id="licenseeSearchReset">Zurücksetzen</button>

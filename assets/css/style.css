@@ -204,7 +204,7 @@ main {
     align-items: center;
     gap: 0.5rem;
     width: 100%;
-    max-width: 22rem;
+    max-width: 44rem;
 }
 
 .table-search-label {
