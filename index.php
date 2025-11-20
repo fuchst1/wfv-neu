@@ -200,7 +200,7 @@ $licenseTypeLabels = license_type_labels();
     <?php
         $summarySection = ob_get_clean();
 
-        echo $isYearClosed ? $summarySection . $tableSection : $tableSection . $summarySection;
+        echo $tableSection . $summarySection;
     ?>
 </main>
 
