@@ -127,16 +127,16 @@ $licenseTypeLabels = license_type_labels();
                         <input type="text" id="applicantLastName" data-validate="required" required>
                     </label>
                     <label>
-                        <span class="label-title">Straße <span class="required-indicator" aria-hidden="true">*</span></span>
-                        <input type="text" id="applicantStreet" data-validate="required" required>
+                        <span class="label-title">Straße</span>
+                        <input type="text" id="applicantStreet">
                     </label>
                     <label>
-                        <span class="label-title">PLZ <span class="required-indicator" aria-hidden="true">*</span></span>
-                        <input type="text" id="applicantZip" data-validate="required,zip" required>
+                        <span class="label-title">PLZ</span>
+                        <input type="text" id="applicantZip" data-validate="zip">
                     </label>
                     <label>
-                        <span class="label-title">Ort <span class="required-indicator" aria-hidden="true">*</span></span>
-                        <input type="text" id="applicantCity" data-validate="required" required>
+                        <span class="label-title">Ort</span>
+                        <input type="text" id="applicantCity">
                     </label>
                     <label>Telefon
                         <input type="text" id="applicantPhone" data-validate="phone">
