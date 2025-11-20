@@ -48,7 +48,7 @@ $boats = get_boats_overview();
     <section class="table-section">
         <div class="table-actions-bar">
             <div class="table-actions">
-                <button type="button" class="secondary" id="openAddBoat">Boot hinzufügen</button>
+                <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
             </div>
         </div>
         <div class="table-search-row">
@@ -110,7 +110,7 @@ $boats = get_boats_overview();
                             <?php endif; ?>
                         </td>
                         <td class="actions">
-                            <button type="button" class="secondary assign">Lizenznehmer zuweisen</button>
+                            <button type="button" class="primary assign">Lizenznehmer zuweisen</button>
                             <button type="button" class="secondary edit">Bearbeiten</button>
                             <button type="button" class="danger delete">Löschen</button>
                         </td>

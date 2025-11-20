@@ -43,7 +43,7 @@ $blocklistEntries = get_blocklist_entries();
     <section class="table-section">
         <div class="table-actions-bar">
             <div class="table-actions">
-                <button type="button" class="secondary" id="openAddBlockEntry">Person hinzufügen</button>
+                <button type="button" class="primary" id="openAddBlockEntry">Person hinzufügen</button>
             </div>
         </div>
         <div class="table-search-row">
