@@ -61,7 +61,7 @@ $licenseTypeLabels = license_type_labels();
     <section class="table-section">
         <div class="table-actions-bar">
             <div class="table-actions">
-                <button class="secondary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
+                <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=csv">CSV exportieren</a>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=xlsx">XLSX exportieren</a>
             </div>
@@ -140,7 +140,7 @@ $licenseTypeLabels = license_type_labels();
                                 <?php endif; ?>
                             </td>
                             <td class="actions">
-                                <button class="secondary extend">Verlängern</button>
+                                <button class="primary extend">Verlängern</button>
                                 <?php if ($isYearClosed): ?>
                                     <span class="badge badge-closed">Jahr abgeschlossen</span>
                                 <?php else: ?>

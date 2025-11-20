@@ -776,7 +776,7 @@
         cell.innerHTML = '';
 
         const assignButton = document.createElement('button');
-        assignButton.className = 'secondary assign';
+        assignButton.className = 'primary assign';
         assignButton.type = 'button';
         assignButton.textContent = 'Lizenz zuweisen';
         assignButton.addEventListener('click', () => {

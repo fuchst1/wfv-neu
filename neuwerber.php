@@ -52,7 +52,7 @@ $licenseTypeLabels = license_type_labels();
     <section class="table-section">
         <div class="table-actions-bar">
             <div class="table-actions">
-                <button class="secondary" id="openAddApplicant">Neuwerber hinzufügen</button>
+                <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
             </div>
         </div>
         <div class="table-search-row">
@@ -105,7 +105,7 @@ $licenseTypeLabels = license_type_labels();
                             <?= $notesPreview ? nl2br(htmlspecialchars($notesPreview)) : '–' ?>
                         </td>
                         <td class="actions">
-                            <button class="secondary assign">Lizenz zuweisen</button>
+                            <button class="primary assign">Lizenz zuweisen</button>
                             <button class="secondary edit">Bearbeiten</button>
                             <button class="danger delete">Löschen</button>
                         </td>
