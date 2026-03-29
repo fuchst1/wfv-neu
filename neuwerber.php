@@ -221,6 +221,10 @@ $licenseTypeLabels = license_type_labels();
                     <label>Zahlungsdatum
                         <input type="date" id="assignDate">
                     </label>
+                    <label>
+                        <span class="label-title">Lizenznummer <span class="required-indicator" aria-hidden="true">*</span></span>
+                        <input type="number" id="assignLicenseNumber" step="1" min="1" data-validate="required" required>
+                    </label>
                 </div>
                 <p class="form-hint" id="assignAgeHint"></p>
                 <?php if (!$years): ?>

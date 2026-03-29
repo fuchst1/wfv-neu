@@ -20,6 +20,10 @@ $yearClosure = get_year_closure($currentYear);
 $isYearClosed = $yearClosure !== null;
 $licenseTypes = license_types();
 $licenseTypeLabels = license_type_labels();
+$kinderCount = count(array_filter($licensees, static function (array $license): bool {
+    return ($license['lizenztyp'] ?? null) === 'Kinder';
+}));
+$licenseeTotalExcludingKinder = count($licensees) - $kinderCount;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -46,7 +50,8 @@ $licenseTypeLabels = license_type_labels();
     <section class="dashboard">
         <div>
             <h2>Überblick <?= $currentYear ?></h2>
-            <p>Lizenznehmer gesamt: <strong><?= count($licensees) ?></strong></p>
+            <p>Lizenznehmer gesamt: <strong><?= $licenseeTotalExcludingKinder ?></strong></p>
+            <p>Kinder: <strong><?= $kinderCount ?></strong></p>
             <?php if ($isYearClosed): ?>
                 <p class="year-status-message">
                     Dieses Jahr wurde<?= $yearClosure && $yearClosure['abgeschlossen_am'] ? ' am ' . htmlspecialchars(format_datetime($yearClosure['abgeschlossen_am'])) : '' ?> abgeschlossen. Direkte Änderungen sind nicht mehr möglich, Verlängerungen in kommende Jahre jedoch weiterhin.
@@ -73,44 +78,46 @@ $licenseTypeLabels = license_type_labels();
             </div>
         </div>
         <table id="licenseTable">
-            <thead>
-                    <tr>
-                        <th>Lizenznehmer</th>
-                        <th>Lizenznummer</th>
-                        <th>Lizenztyp</th>
-                        <th>Zahlung</th>
-                        <th>Notizen</th>
-                        <th>Aktionen</th>
+	            <thead>
+	                    <tr>
+	                        <th>Lizenznehmer</th>
+	                        <th>Fischerkartennummer</th>
+	                        <th>Lizenznummer</th>
+	                        <th>Lizenztyp</th>
+	                        <th>Zahlung</th>
+	                        <th>Notizen</th>
+	                        <th>Aktionen</th>
                     </tr>
             </thead>
             <tbody>
-                <?php if (!$licensees): ?>
-                    <tr data-empty-row>
-                        <td colspan="6" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($licensees as $row): ?>
-                        <tr id="license-<?= $row['lizenz_id'] ?>" data-license='<?= json_encode($row, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
-                            <td>
-                                <strong><?= htmlspecialchars($row['nachname']) ?>, <?= htmlspecialchars($row['vorname']) ?></strong><br>
-                                <small><?= htmlspecialchars($row['strasse'] ?? '') ?>, <?= htmlspecialchars($row['plz'] ?? '') ?> <?= htmlspecialchars($row['ort'] ?? '') ?></small><br>
-                                <small>Telefon: <?= htmlspecialchars($row['telefon'] ?? '-') ?> · E-Mail: <?= htmlspecialchars($row['email'] ?? '-') ?></small>
-                                <?php
-                                    $licenseeBirthdate = $row['geburtsdatum'] ?? null;
-                                    $licenseeBirthdateDisplay = $licenseeBirthdate ? format_date($licenseeBirthdate) : null;
-                                    $licenseeAge = $licenseeBirthdate ? calculate_age($licenseeBirthdate) : null;
-                                ?>
+	                <?php if (!$licensees): ?>
+	                    <tr data-empty-row>
+	                        <td colspan="7" class="empty">Keine Lizenzen für dieses Jahr vorhanden.</td>
+	                    </tr>
+	                <?php else: ?>
+	                    <?php foreach ($licensees as $row): ?>
+	                        <tr id="license-<?= $row['lizenz_id'] ?>" data-license='<?= json_encode($row, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>'>
+	                            <td>
+	                                <strong><?= htmlspecialchars($row['nachname']) ?>, <?= htmlspecialchars($row['vorname']) ?></strong><br>
+	                                <small><?= htmlspecialchars($row['strasse'] ?? '') ?>, <?= htmlspecialchars($row['plz'] ?? '') ?> <?= htmlspecialchars($row['ort'] ?? '') ?></small><br>
+	                                <small>Telefon: <?= htmlspecialchars($row['telefon'] ?? '-') ?> · E-Mail: <?= htmlspecialchars($row['email'] ?? '-') ?></small>
+	                                <?php
+	                                    $licenseeBirthdate = $row['geburtsdatum'] ?? null;
+	                                    $licenseeBirthdateDisplay = $licenseeBirthdate ? format_date($licenseeBirthdate) : null;
+	                                    $licenseeAge = $licenseeBirthdate ? calculate_age($licenseeBirthdate) : null;
+	                                ?>
                                 <?php if ($licenseeBirthdateDisplay): ?>
                                     <br><small>Geburtsdatum: <?= htmlspecialchars($licenseeBirthdateDisplay) ?><?= $licenseeAge !== null ? ' (Alter: ' . (int)$licenseeAge . ')' : '' ?></small>
                                 <?php endif; ?>
-                                <?php if (!empty($row['previous_license_years'])): ?>
-                                    <br><small>Vorjahre: <?= htmlspecialchars(implode(', ', $row['previous_license_years'])) ?></small>
-                                <?php endif; ?>
-                            </td>
-                            <?php
-                                $licenseNumberRaw = $row['lizenznummer'] ?? '';
-                                $licenseNumberDisplay = trim((string)$licenseNumberRaw) !== '' ? $licenseNumberRaw : '–';
-                            ?>
+	                                <?php if (!empty($row['previous_license_years'])): ?>
+	                                    <br><small>Vorjahre: <?= htmlspecialchars(implode(', ', $row['previous_license_years'])) ?></small>
+	                                <?php endif; ?>
+	                            </td>
+	                            <td><?= htmlspecialchars($row['fischerkartennummer'] ?? '-') ?></td>
+	                            <?php
+	                                $licenseNumberRaw = $row['lizenznummer'] ?? null;
+	                                $licenseNumberDisplay = $licenseNumberRaw !== null && (int)$licenseNumberRaw > 0 ? (string)(int)$licenseNumberRaw : '–';
+	                            ?>
                             <td><?= htmlspecialchars($licenseNumberDisplay) ?></td>
                             <?php
                                 $licenseType = (string)($row['lizenztyp'] ?? '');
@@ -278,6 +285,10 @@ $licenseTypeLabels = license_type_labels();
                     <label>Zahlungsdatum
                         <input type="date" id="zahlungsdatum">
                     </label>
+                    <label>
+                        <span class="label-title">Lizenznummer <span class="required-indicator" aria-hidden="true">*</span></span>
+                        <input type="number" id="licenseNumber" step="1" min="1" data-validate="required" required>
+                    </label>
                 </div>
                 <label>Notizen
                     <textarea id="lizenzNotizen" rows="3"></textarea>
@@ -365,6 +376,10 @@ $licenseTypeLabels = license_type_labels();
                     </label>
                     <label>Zahlungsdatum
                         <input type="date" id="extendDate">
+                    </label>
+                    <label>
+                        <span class="label-title">Lizenznummer <span class="required-indicator" aria-hidden="true">*</span></span>
+                        <input type="number" id="extendLicenseNumber" step="1" min="1" data-validate="required" required>
                     </label>
                 </div>
                 <label>Notizen

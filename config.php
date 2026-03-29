@@ -5,6 +5,6 @@ return [
     'port' => 3306,
     'database' => 'woerdener_fischereiverein',
     'username' => 'root',
-    'password' => '',
+    'password' => 'DodgeViper11!',
     'charset' => 'utf8mb4'
 ];

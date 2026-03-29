@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS lizenznehmer (
     telefon VARCHAR(50),
     email VARCHAR(100),
     fischerkartennummer VARCHAR(50),
+    schluessel_ausgegeben TINYINT(1) NOT NULL DEFAULT 0,
+    schluessel_ausgegeben_am DATE NULL,
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -76,6 +78,7 @@ SET @licenseTable := CONCAT('lizenzen_', @jahr);
 SET @sql := CONCAT('CREATE TABLE IF NOT EXISTS ', @licenseTable, ' (
     id INT PRIMARY KEY AUTO_INCREMENT,
     lizenznehmer_id INT NOT NULL,
+    lizenznummer INT NULL,
     lizenztyp ENUM("Angel", "Daubel", "Boot", "Intern", "Kinder", "Jugend") NOT NULL,
     kosten DECIMAL(10,2) NOT NULL,
     trinkgeld DECIMAL(10,2) DEFAULT 0.00,

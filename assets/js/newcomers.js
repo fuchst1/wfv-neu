@@ -36,6 +36,7 @@
         tip: document.getElementById('assignTip'),
         total: document.getElementById('assignTotal'),
         date: document.getElementById('assignDate'),
+        licenseNumber: document.getElementById('assignLicenseNumber'),
         notes: document.getElementById('assignNotes'),
         ageHint: document.getElementById('assignAgeHint'),
         ageWarning: document.getElementById('assignAgeWarning'),
@@ -66,6 +67,8 @@
     let pendingApplicantAction = null;
     let pendingBlockContext = null;
     const priceCache = {};
+    let applicantCityLookupTimeout = null;
+    let assignLicenseNumberRequestId = 0;
 
     if (typeof LICENSE_PRICES === 'object') {
         priceCache[CURRENT_YEAR] = LICENSE_PRICES;
@@ -131,6 +134,32 @@
                     }
                 });
         });
+        addFields.city.addEventListener('blur', event => {
+            const value = event.target.value.trim();
+            fillZipFromCity(value);
+        });
+        const fillZipFromCity = value => {
+            if (!value) return;
+            fetch(`api.php?action=lookup_zip&ort=${encodeURIComponent(value)}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success && result.plz) {
+                        addFields.zip.value = result.plz;
+                    }
+                });
+        };
+        addFields.city.addEventListener('input', event => {
+            const value = event.target.value.trim();
+            if (applicantCityLookupTimeout) {
+                window.clearTimeout(applicantCityLookupTimeout);
+            }
+            if (value.length < 3) {
+                return;
+            }
+            applicantCityLookupTimeout = window.setTimeout(() => {
+                fillZipFromCity(value);
+            }, 250);
+        });
         if (addFields.birthdate) {
             ['input', 'change'].forEach(eventName => {
                 addFields.birthdate.addEventListener(eventName, () => {
@@ -194,6 +223,7 @@
         assignFields.year.addEventListener('change', event => {
             const year = event.target.value;
             if (!year) return;
+            updateAssignLicenseNumberSuggestion();
             if (priceCache[year]) {
                 updatePriceSuggestion();
                 updateAssignAgeInfo();
@@ -217,7 +247,7 @@
             alert('Kein Jahr vorhanden. Bitte neues Jahr im Adminbereich anlegen.');
             return;
         }
-        if (!Validation.validateInput(assignFields.year) || !Validation.validateInput(assignFields.type) || !Validation.validateInput(assignFields.cost)) {
+        if (!Validation.validateInput(assignFields.year) || !Validation.validateInput(assignFields.type) || !Validation.validateInput(assignFields.cost) || !Validation.validateInput(assignFields.licenseNumber)) {
             return;
         }
         const payload = {
@@ -228,6 +258,7 @@
             kosten: assignFields.cost.value,
             trinkgeld: assignFields.tip.value || 0,
             zahlungsdatum: assignFields.date.value,
+            lizenznummer: assignFields.licenseNumber ? assignFields.licenseNumber.value : '',
             notizen: assignFields.notes.value,
         };
 
@@ -268,6 +299,18 @@
             pendingAssignmentPayload = payload;
             pendingBlockContext = 'assign';
             showBlockWarning(result.entry, { type: 'assign', payload });
+            return;
+        }
+
+        if (result.duplicate && !force) {
+            const licenseNumber = result.license_number ? ` (${result.license_number})` : '';
+            const confirmed = window.confirm(`${result.message || 'Für diese Lizenznummer existiert in diesem Jahr bereits eine Lizenz.'}${licenseNumber} Möchtest du trotzdem speichern?`);
+            if (confirmed) {
+                submitAssignment(payload, true);
+            } else {
+                pendingAssignmentPayload = null;
+                pendingBlockContext = null;
+            }
             return;
         }
 
@@ -368,6 +411,9 @@
         }
         if (assignFields.date) {
             assignFields.date.value = getTodayDateString();
+        }
+        if (assignFields.licenseNumber) {
+            assignFields.licenseNumber.value = '';
         }
         if (assignFields.notes) {
             assignFields.notes.value = applicant.notizen || '';
@@ -543,6 +589,42 @@
             assignFields.cost.value = Number(prices[type]).toFixed(2);
             updateTotal();
         }
+    }
+
+    function getFieldValueSnapshot(field) {
+        return field ? String(field.value || '').trim() : '';
+    }
+
+    function fetchNextLicenseNumber(year) {
+        if (!year) {
+            return Promise.resolve(null);
+        }
+
+        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}`)
+            .then(r => r.json())
+            .then(result => (result && result.success && typeof result.next_license_number === 'number' ? result.next_license_number : null))
+            .catch(() => null);
+    }
+
+    function updateAssignLicenseNumberSuggestion() {
+        if (!assignFields.year || !assignFields.licenseNumber || !assignFields.year.value) {
+            return;
+        }
+
+        const targetYear = assignFields.year.value;
+        const initialValue = getFieldValueSnapshot(assignFields.licenseNumber);
+        const requestId = ++assignLicenseNumberRequestId;
+        fetchNextLicenseNumber(targetYear).then(nextLicenseNumber => {
+            if (requestId !== assignLicenseNumberRequestId || !assignFields.licenseNumber || assignFields.year.value !== String(targetYear)) {
+                return;
+            }
+            if (getFieldValueSnapshot(assignFields.licenseNumber) !== initialValue) {
+                return;
+            }
+            if (nextLicenseNumber !== null) {
+                assignFields.licenseNumber.value = String(nextLicenseNumber);
+            }
+        });
     }
 
     function getTodayDateString() {

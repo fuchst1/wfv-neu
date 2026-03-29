@@ -1,6 +1,27 @@
 <?php
 require_once __DIR__ . '/db.php';
 
+function app_timezone(): DateTimeZone
+{
+    static $timezone = null;
+
+    if (!$timezone) {
+        $timezone = new DateTimeZone('Europe/Vienna');
+    }
+
+    return $timezone;
+}
+
+function app_today(): DateTimeImmutable
+{
+    return new DateTimeImmutable('today', app_timezone());
+}
+
+function app_today_string(): string
+{
+    return app_today()->format('Y-m-d');
+}
+
 function available_years(): array
 {
     $pdo = get_pdo();
@@ -164,6 +185,19 @@ function ensure_person_birthdate_columns(): void
     $ensured = true;
 }
 
+function ensure_licensee_key_columns(): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $pdo = get_pdo();
+    ensure_column_exists($pdo, 'lizenznehmer', 'schluessel_ausgegeben', 'schluessel_ausgegeben TINYINT(1) NOT NULL DEFAULT 0 AFTER fischerkartennummer');
+    ensure_column_exists($pdo, 'lizenznehmer', 'schluessel_ausgegeben_am', 'schluessel_ausgegeben_am DATE NULL AFTER schluessel_ausgegeben');
+    $ensured = true;
+}
+
 function ensure_year_closure_table_exists(): void
 {
     static $ensured = false;
@@ -195,6 +229,7 @@ function ensure_year_exists(int $year): bool
     $pdo->exec("CREATE TABLE IF NOT EXISTS {$licenseTable} (
         id INT PRIMARY KEY AUTO_INCREMENT,
         lizenznehmer_id INT NOT NULL,
+        lizenznummer INT NULL,
         lizenztyp ENUM({$enumValues}) NOT NULL,
         kosten DECIMAL(10,2) NOT NULL,
         trinkgeld DECIMAL(10,2) DEFAULT 0.00,
@@ -227,9 +262,31 @@ function ensure_year_exists(int $year): bool
         $pdo->exec("ALTER TABLE {$quotedLicenseTable} MODIFY lizenztyp ENUM({$enumValues}) NOT NULL");
     }
 
+    ensure_year_license_number_column($year, $pdo);
     ensure_boats_table_exists();
 
     return true;
+}
+
+function ensure_year_license_number_column(int $year, ?PDO $pdo = null): void
+{
+    $pdo = $pdo ?? get_pdo();
+    $licenseTable = license_table($year);
+
+    ensure_column_exists($pdo, $licenseTable, 'lizenznummer', 'lizenznummer INT NULL AFTER lizenznehmer_id');
+}
+
+function get_next_license_number_for_year(int $year, ?PDO $pdo = null): int
+{
+    $pdo = $pdo ?? get_pdo();
+    ensure_year_exists($year);
+    ensure_year_license_number_column($year, $pdo);
+
+    $licenseTable = license_table($year);
+    $stmt = $pdo->query("SELECT COALESCE(MAX(lizenznummer), 0) + 1 FROM {$licenseTable}");
+    $nextNumber = (int)$stmt->fetchColumn();
+
+    return $nextNumber > 0 ? $nextNumber : 1;
 }
 
 function get_year_closures(): array
@@ -410,8 +467,25 @@ function get_all_licensees(): array
 {
     $pdo = get_pdo();
     ensure_person_birthdate_columns();
+    ensure_licensee_key_columns();
     $stmt = $pdo->query('SELECT * FROM lizenznehmer ORDER BY nachname, vorname');
     return $stmt->fetchAll();
+}
+
+function get_licensees_with_keys(): array
+{
+    $pdo = get_pdo();
+    ensure_person_birthdate_columns();
+    ensure_licensee_key_columns();
+
+    $stmt = $pdo->query(
+        "SELECT id, vorname, nachname, geburtsdatum, strasse, plz, ort, telefon, email, fischerkartennummer, schluessel_ausgegeben, schluessel_ausgegeben_am
+         FROM lizenznehmer
+         WHERE schluessel_ausgegeben = 1
+         ORDER BY nachname, vorname, id"
+    );
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function get_newcomers(): array
@@ -429,10 +503,11 @@ function get_licensees_for_year(int $year): array
     $licenseTable = license_table($year);
 
     ensure_year_exists($year);
+    ensure_year_license_number_column($year, $pdo);
     ensure_boats_table_exists();
     $boatsTable = boats_table();
 
-    $sql = "SELECT l.id AS lizenz_id, l.lizenznehmer_id, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
+    $sql = "SELECT l.id AS lizenz_id, l.lizenznehmer_id, l.lizenznummer, l.lizenztyp, l.kosten, l.trinkgeld, l.gesamt, l.zahlungsdatum, l.notizen AS lizenz_notizen,
                 ln.*,
                 (SELECT b2.id FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS boot_id,
                 (SELECT b2.bootnummer FROM {$boatsTable} b2 WHERE b2.lizenznehmer_id = ln.id ORDER BY b2.id ASC LIMIT 1) AS bootnummer,
@@ -446,16 +521,6 @@ function get_licensees_for_year(int $year): array
     if (!$licensees) {
         return $licensees;
     }
-
-    foreach ($licensees as &$licensee) {
-        $licenseNumberRaw = isset($licensee['lizenznummer']) ? (string)$licensee['lizenznummer'] : '';
-        $licenseNumber = trim($licenseNumberRaw) !== ''
-            ? $licenseNumberRaw
-            : trim((string)($licensee['fischerkartennummer'] ?? ''));
-
-        $licensee['lizenznummer'] = $licenseNumber;
-    }
-    unset($licensee);
 
     $licenseeIds = [];
     foreach ($licensees as $row) {
@@ -704,12 +769,12 @@ function calculate_age(?string $date): ?int
         return null;
     }
 
-    $birthdate = DateTimeImmutable::createFromFormat('Y-m-d', $date);
+    $birthdate = DateTimeImmutable::createFromFormat('!Y-m-d', $date, app_timezone());
     if (!$birthdate) {
         return null;
     }
 
-    $today = new DateTimeImmutable('today');
+    $today = app_today();
     if ($birthdate > $today) {
         return null;
     }

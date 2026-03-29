@@ -36,6 +36,7 @@
         phone: document.getElementById('telefon'),
         email: document.getElementById('email'),
         card: document.getElementById('fischerkartennummer'),
+        licenseNumber: document.getElementById('licenseNumber'),
         birthdate: document.getElementById('geburtsdatum'),
         ageHint: document.getElementById('licenseAgeHint'),
         ageWarning: document.getElementById('licenseAgeWarning'),
@@ -58,6 +59,7 @@
         tip: document.getElementById('extendTip'),
         total: document.getElementById('extendTotal'),
         date: document.getElementById('extendDate'),
+        licenseNumber: document.getElementById('extendLicenseNumber'),
         notes: document.getElementById('extendNotes'),
     };
 
@@ -77,6 +79,9 @@
     let pendingBlockHandlers = null;
 
     const YEAR_LOCKED = typeof IS_YEAR_CLOSED !== 'undefined' && !!IS_YEAR_CLOSED;
+    let cityLookupTimeout = null;
+    let licenseNumberRequestId = 0;
+    let extendLicenseNumberRequestId = 0;
 
     if (!licenseModal || !licenseForm) {
         return;
@@ -227,6 +232,7 @@
     if (extendFields.year) {
         extendFields.year.addEventListener('change', () => {
             updateExtendPricing();
+            updateExtendLicenseNumberProposal();
             updateExtendSubmitButtonState();
         });
     }
@@ -234,6 +240,14 @@
     if (extendFields.type) {
         extendFields.type.addEventListener('change', () => {
             updateExtendPricing();
+        });
+    }
+
+    if (extendFields.licenseNumber) {
+        ['input', 'change'].forEach(eventName => {
+            extendFields.licenseNumber.addEventListener(eventName, () => {
+                updateExtendSubmitButtonState();
+            });
         });
     }
 
@@ -246,6 +260,7 @@
                 applyExtendLicenseDefaults(selectedLicense);
                 if (extendFields.year && extendFields.year.value) {
                     updateExtendPricing();
+                    updateExtendLicenseNumberProposal();
                 } else {
                     updateExtendTotal();
                 }
@@ -268,6 +283,37 @@
                         licenseFields.city.value = result.ort;
                     }
                 });
+        });
+    }
+
+    if (licenseFields.city) {
+        const fillZipFromCity = value => {
+            if (!value) return;
+            fetch(`api.php?action=lookup_zip&ort=${encodeURIComponent(value)}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success && result.plz) {
+                        licenseFields.zip.value = result.plz;
+                    }
+                });
+        };
+
+        licenseFields.city.addEventListener('blur', event => {
+            const value = event.target.value.trim();
+            fillZipFromCity(value);
+        });
+
+        licenseFields.city.addEventListener('input', event => {
+            const value = event.target.value.trim();
+            if (cityLookupTimeout) {
+                window.clearTimeout(cityLookupTimeout);
+            }
+            if (value.length < 3) {
+                return;
+            }
+            cityLookupTimeout = window.setTimeout(() => {
+                fillZipFromCity(value);
+            }, 250);
         });
     }
 
@@ -318,6 +364,7 @@
                 kosten: extendFields.cost.value,
                 trinkgeld: extendFields.tip.value || 0,
                 zahlungsdatum: extendFields.date.value,
+                lizenznummer: extendFields.licenseNumber ? extendFields.licenseNumber.value : '',
                 notizen: extendFields.notes.value,
             };
             submitExtendPayload(payload, false);
@@ -361,6 +408,9 @@
         }
         if (data) {
             fillLicenseForm(data);
+        }
+        if (!data || !hasValidLicenseNumber(data && data.lizenznummer)) {
+            updateCurrentYearLicenseNumberProposal();
         }
         updateLicenseAgeState();
         licenseModal.hidden = false;
@@ -413,6 +463,7 @@
         }
         if (defaultYear && yearField) {
             updateExtendPricing();
+            updateExtendLicenseNumberProposal();
         } else {
             updateExtendTotal();
         }
@@ -500,6 +551,9 @@
         if (extendFields.tip) {
             extendFields.tip.value = Number(0).toFixed(2);
         }
+        if (extendFields.licenseNumber) {
+            extendFields.licenseNumber.value = '';
+        }
         updateExtendTotal();
     }
 
@@ -510,8 +564,9 @@
 
         const yearValid = !extendFields.year || (!extendFields.year.disabled && extendFields.year.value);
         const licenseValid = !extendFields.license || (!extendFields.license.disabled && extendFields.license.value);
+        const licenseNumberValid = !extendFields.licenseNumber || !!String(extendFields.licenseNumber.value || '').trim();
 
-        extendSubmitButton.disabled = !(yearValid && licenseValid);
+        extendSubmitButton.disabled = !(yearValid && licenseValid && licenseNumberValid);
     }
 
     function resetLicenseForm() {
@@ -541,6 +596,9 @@
         licenseFields.phone.value = data.telefon || '';
         licenseFields.email.value = data.email || '';
         licenseFields.card.value = data.fischerkartennummer || '';
+        if (licenseFields.licenseNumber) {
+            licenseFields.licenseNumber.value = hasValidLicenseNumber(data.lizenznummer) ? String(parseInt(data.lizenznummer, 10)) : '';
+        }
         if (licenseFields.birthdate) {
             const birthdateValue = data.geburtsdatum && data.geburtsdatum !== '0000-00-00' ? data.geburtsdatum : '';
             licenseFields.birthdate.value = birthdateValue;
@@ -646,6 +704,68 @@
         return today.toISOString().split('T')[0];
     }
 
+    function getFieldValueSnapshot(field) {
+        return field ? String(field.value || '').trim() : '';
+    }
+
+    function hasValidLicenseNumber(value) {
+        const parsed = parseInt(value, 10);
+        return Number.isInteger(parsed) && parsed > 0;
+    }
+
+    function fetchNextLicenseNumber(year) {
+        if (!year) {
+            return Promise.resolve(null);
+        }
+
+        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}`)
+            .then(r => r.json())
+            .then(result => (result && result.success && typeof result.next_license_number === 'number' ? result.next_license_number : null))
+            .catch(() => null);
+    }
+
+    function updateCurrentYearLicenseNumberProposal() {
+        if (!licenseFields.licenseNumber) {
+            return;
+        }
+
+        const initialValue = getFieldValueSnapshot(licenseFields.licenseNumber);
+        const requestId = ++licenseNumberRequestId;
+        fetchNextLicenseNumber(CURRENT_YEAR).then(nextLicenseNumber => {
+            if (requestId !== licenseNumberRequestId || !licenseFields.licenseNumber) {
+                return;
+            }
+            if (getFieldValueSnapshot(licenseFields.licenseNumber) !== initialValue) {
+                return;
+            }
+            if (nextLicenseNumber !== null) {
+                licenseFields.licenseNumber.value = String(nextLicenseNumber);
+            }
+        });
+    }
+
+    function updateExtendLicenseNumberProposal() {
+        if (!extendFields.licenseNumber || !extendFields.year || !extendFields.year.value) {
+            return;
+        }
+
+        const initialValue = getFieldValueSnapshot(extendFields.licenseNumber);
+        const requestId = ++extendLicenseNumberRequestId;
+        const targetYear = extendFields.year.value;
+        fetchNextLicenseNumber(targetYear).then(nextLicenseNumber => {
+            if (requestId !== extendLicenseNumberRequestId || !extendFields.licenseNumber || extendFields.year.value !== String(targetYear)) {
+                return;
+            }
+            if (getFieldValueSnapshot(extendFields.licenseNumber) !== initialValue) {
+                return;
+            }
+            if (nextLicenseNumber !== null) {
+                extendFields.licenseNumber.value = String(nextLicenseNumber);
+                updateExtendSubmitButtonState();
+            }
+        });
+    }
+
     function submitLicensePayload(payload, force) {
         const requestBody = { ...payload, force };
         fetch('api.php?action=save_license', {
@@ -671,6 +791,27 @@
         if (result.blocked && !force) {
             pendingBlockPayload = payload;
             showBlockWarning(result.entry, payload, {
+                onConfirm: () => {
+                    submitLicensePayload(payload, true);
+                },
+                onCancel: () => {
+                    pendingBlockPayload = null;
+                },
+            });
+            return;
+        }
+
+        if (result.duplicate && !force) {
+            const licenseNumber = result.license_number ? String(result.license_number).trim() : '';
+            const baseMessageRaw = result.message || 'Für diese Lizenznummer existiert in diesem Jahr bereits eine Lizenz.';
+            const promptMessage = licenseNumber !== ''
+                ? `${baseMessageRaw} (${licenseNumber}) Möchtest du trotzdem speichern?`
+                : `${baseMessageRaw} Möchtest du trotzdem speichern?`;
+            pendingBlockPayload = payload;
+            showBlockWarning(null, payload, {
+                message: promptMessage,
+                title: 'Lizenznummer bereits vorhanden',
+                confirmLabel: 'Trotzdem speichern',
                 onConfirm: () => {
                     submitLicensePayload(payload, true);
                 },
@@ -725,7 +866,7 @@
                 : `${messageWithNumber}${messageWithNumber.endsWith('.') ? '' : '.'} Möchtest du trotzdem fortfahren?`;
             showBlockWarning(null, null, {
                 message: promptMessage,
-                title: 'Lizenz bereits vorhanden',
+                title: 'Lizenznummer bereits vorhanden',
                 confirmLabel: 'Trotzdem verlängern',
                 onConfirm: () => {
                     submitExtendPayload(payload, true);
@@ -892,6 +1033,7 @@
                 kosten: licenseFields.cost.value,
                 trinkgeld: licenseFields.tip.value || 0,
                 zahlungsdatum: licenseFields.date.value,
+                lizenznummer: licenseFields.licenseNumber ? licenseFields.licenseNumber.value : '',
                 notizen: licenseFields.notes.value
             },
             licensee: {

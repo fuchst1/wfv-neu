@@ -141,7 +141,7 @@
             meta.className = 'licensee-card-meta';
             const metaParts = [];
             if (result && result.fischerkartennummer) {
-                metaParts.push(`Lizenznummer: ${result.fischerkartennummer}`);
+                metaParts.push(`Fischerkartennummer: ${result.fischerkartennummer}`);
             }
             const licenseCount = Array.isArray(result && result.licenses) ? result.licenses.length : 0;
             metaParts.push(licenseCount === 1 ? '1 Lizenz' : `${licenseCount} Lizenzen`);
@@ -239,7 +239,7 @@
 
                 const thead = document.createElement('thead');
                 const headRow = document.createElement('tr');
-                ['Lizenz-ID', 'Jahr', 'Lizenztyp', 'Zahlungsdatum', 'Kosten', 'Trinkgeld', 'Gesamt', 'Notizen'].forEach(text => {
+                ['Lizenz-ID', 'Jahr', 'Lizenznummer', 'Lizenztyp', 'Zahlungsdatum', 'Kosten', 'Trinkgeld', 'Gesamt', 'Notizen'].forEach(text => {
                     const th = document.createElement('th');
                     th.textContent = text;
                     headRow.appendChild(th);
@@ -265,6 +265,10 @@
                     const yearCell = document.createElement('td');
                     yearCell.textContent = license && typeof license.jahr === 'number' ? String(license.jahr) : '–';
                     row.appendChild(yearCell);
+
+                    const licenseNumberCell = document.createElement('td');
+                    licenseNumberCell.textContent = license && typeof license.lizenznummer === 'number' && license.lizenznummer > 0 ? String(license.lizenznummer) : '–';
+                    row.appendChild(licenseNumberCell);
 
                     const typeCell = document.createElement('td');
                     typeCell.textContent = license && license.lizenztyp ? license.lizenztyp : '–';

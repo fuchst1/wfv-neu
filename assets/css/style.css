@@ -553,6 +553,10 @@ details {
     display: block;
 }
 
+.muted {
+    color: var(--muted);
+}
+
 .search-message {
     margin-top: 0.75rem;
     color: var(--muted);
@@ -594,6 +598,25 @@ details {
 .licensee-card-meta {
     font-size: 0.95rem;
     color: var(--muted);
+}
+
+.licensee-key-summary {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--muted);
+}
+
+.badge-key-given {
+    background: #e7f8ed;
+    color: #15803d;
+}
+
+.badge-key-missing {
+    background: #eef2f7;
+    color: #475569;
 }
 
 .licensee-details {
@@ -660,6 +683,26 @@ details {
     margin: 0;
 }
 
+.licensee-card-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.form-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.form-checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .app-header {
         gap: 1rem;
@@ -674,5 +717,14 @@ details {
         display: inline-block;
         width: auto;
         margin-right: 0.5rem;
+    }
+
+    .licensee-card-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .licensee-card-actions button {
+        width: 100%;
     }
 }
