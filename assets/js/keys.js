@@ -10,19 +10,27 @@
     const keyLicenseeName = document.getElementById('keyLicenseeName');
     const keyGiven = document.getElementById('keyGiven');
     const keyGivenDate = document.getElementById('keyGivenDate');
+    const keyReturnedDate = document.getElementById('keyReturnedDate');
+    const keyHistoryState = document.getElementById('keyHistoryState');
+    const keyHistoryTable = document.getElementById('keyHistoryTable');
+    const keyHistoryBody = document.getElementById('keyHistoryBody');
     const keyOverviewBody = document.getElementById('keyOverviewBody');
     const keyOverviewCount = document.getElementById('keyOverviewCount');
     const keySubmitButton = keyForm ? keyForm.querySelector('button[type="submit"]') : null;
     const defaultSearchMessage = 'Geben Sie einen Namen ein, um die Suche zu starten.';
 
     let activeSearchController = null;
+    let keyHistoryController = null;
     let currentResults = [];
     let keyOverviewLicensees = [];
     let currentLicenseeId = null;
     let currentLicensee = null;
+    let currentActiveHistory = null;
+    let currentKeyHistory = [];
     let saveInFlight = false;
+    let historyLoading = false;
 
-    if (!searchForm || !searchInput || !searchResults || !searchMessage || !keyModal || !keyForm || !keyGiven || !keyGivenDate) {
+    if (!searchForm || !searchInput || !searchResults || !searchMessage || !keyModal || !keyForm || !keyGiven || !keyGivenDate || !keyReturnedDate || !keyHistoryState || !keyHistoryTable || !keyHistoryBody) {
         return;
     }
 
@@ -38,9 +46,24 @@
         }
     }
 
+    function updateHistoryMessage(message, variant = 'info') {
+        const text = typeof message === 'string' ? message : '';
+        keyHistoryState.textContent = text;
+        keyHistoryState.classList.toggle('form-warning', variant === 'error');
+        keyHistoryState.classList.toggle('form-hint', variant !== 'error');
+    }
+
     function clearSearchResults() {
         searchResults.innerHTML = '';
         searchResults.hidden = true;
+    }
+
+    function clearKeyHistory() {
+        currentActiveHistory = null;
+        currentKeyHistory = [];
+        keyHistoryBody.innerHTML = '';
+        keyHistoryTable.hidden = true;
+        updateHistoryMessage('Noch kein Schlüsselverlauf vorhanden.');
     }
 
     function getTodayDateString() {
@@ -140,6 +163,34 @@
             schluessel_ausgegeben: !!licensee.schluessel_ausgegeben,
             schluessel_ausgegeben_am: keyDate,
             schluessel_ausgegeben_am_formatted: licensee.schluessel_ausgegeben_am_formatted || '–',
+        };
+    }
+
+    function buildNormalizedKeyHistoryEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return null;
+        }
+
+        const id = typeof entry.id === 'number' ? entry.id : parseInt(entry.id, 10);
+        if (!id) {
+            return null;
+        }
+
+        const licenseeId = typeof entry.lizenznehmer_id === 'number'
+            ? entry.lizenznehmer_id
+            : parseInt(entry.lizenznehmer_id, 10);
+        const issueDate = entry.schluessel_ausgegeben_am ? String(entry.schluessel_ausgegeben_am) : null;
+        const returnDate = entry.schluessel_zurueckgegeben_am ? String(entry.schluessel_zurueckgegeben_am) : null;
+
+        return {
+            ...entry,
+            id,
+            lizenznehmer_id: licenseeId || null,
+            schluessel_ausgegeben_am: issueDate,
+            schluessel_ausgegeben_am_formatted: entry.schluessel_ausgegeben_am_formatted || '–',
+            schluessel_zurueckgegeben_am: returnDate,
+            schluessel_zurueckgegeben_am_formatted: entry.schluessel_zurueckgegeben_am_formatted || '–',
+            offen: returnDate === null,
         };
     }
 
@@ -369,43 +420,217 @@
         searchResults.hidden = false;
     }
 
+    function createKeyHistoryRow(entry) {
+        const row = document.createElement('tr');
+
+        const issueCell = document.createElement('td');
+        issueCell.textContent = entry && entry.schluessel_ausgegeben_am_formatted ? entry.schluessel_ausgegeben_am_formatted : '–';
+        row.appendChild(issueCell);
+
+        const returnCell = document.createElement('td');
+        returnCell.textContent = entry && entry.schluessel_zurueckgegeben_am_formatted && !entry.offen
+            ? entry.schluessel_zurueckgegeben_am_formatted
+            : '–';
+        row.appendChild(returnCell);
+
+        const statusCell = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = `badge ${entry && entry.offen ? 'badge-key-given' : 'badge-key-returned'}`;
+        badge.textContent = entry && entry.offen ? 'Offen' : 'Zurückgegeben';
+        statusCell.appendChild(badge);
+        row.appendChild(statusCell);
+
+        return row;
+    }
+
+    function renderKeyHistory() {
+        keyHistoryBody.innerHTML = '';
+
+        if (!Array.isArray(currentKeyHistory) || currentKeyHistory.length === 0) {
+            keyHistoryTable.hidden = true;
+            updateHistoryMessage('Noch kein Schlüsselverlauf vorhanden.');
+            return;
+        }
+
+        currentKeyHistory.forEach(entry => {
+            keyHistoryBody.appendChild(createKeyHistoryRow(entry));
+        });
+
+        keyHistoryTable.hidden = false;
+        updateHistoryMessage(currentKeyHistory.length === 1
+            ? '1 Eintrag im Schlüsselverlauf.'
+            : `${currentKeyHistory.length} Einträge im Schlüsselverlauf.`);
+    }
+
+    function updateKeyFormState() {
+        if (historyLoading) {
+            keyGiven.disabled = true;
+            keyGivenDate.disabled = true;
+            keyReturnedDate.disabled = true;
+            if (keySubmitButton) {
+                keySubmitButton.disabled = true;
+            }
+            return;
+        }
+
+        keyGiven.disabled = false;
+        if (keySubmitButton) {
+            keySubmitButton.disabled = saveInFlight;
+        }
+
+        if (keyGiven.checked) {
+            keyGivenDate.disabled = false;
+            if (!String(keyGivenDate.value || '').trim()) {
+                keyGivenDate.value = getTodayDateString();
+            }
+            keyReturnedDate.value = '';
+            keyReturnedDate.disabled = true;
+            return;
+        }
+
+        if (currentActiveHistory) {
+            keyGivenDate.disabled = false;
+            keyReturnedDate.disabled = false;
+            if (!String(keyReturnedDate.value || '').trim()) {
+                keyReturnedDate.value = getTodayDateString();
+            }
+            return;
+        }
+
+        keyGivenDate.value = '';
+        keyGivenDate.disabled = true;
+        keyReturnedDate.value = '';
+        keyReturnedDate.disabled = true;
+    }
+
+    function populateKeyModal(data) {
+        const normalizedLicensee = buildNormalizedLicensee(data && data.licensee ? data.licensee : currentLicensee);
+        if (normalizedLicensee) {
+            currentLicensee = currentLicensee
+                ? { ...currentLicensee, ...normalizedLicensee }
+                : normalizedLicensee;
+        }
+
+        currentActiveHistory = buildNormalizedKeyHistoryEntry(data && data.active_history ? data.active_history : null);
+        currentKeyHistory = Array.isArray(data && data.history)
+            ? data.history.map(buildNormalizedKeyHistoryEntry).filter(entry => !!entry)
+            : [];
+
+        keyLicenseeId.value = currentLicenseeId ? String(currentLicenseeId) : '';
+        keyLicenseeName.textContent = getDisplayName(currentLicensee);
+        keyGiven.checked = !!(currentLicensee && currentLicensee.schluessel_ausgegeben);
+        keyGivenDate.value = currentLicensee && currentLicensee.schluessel_ausgegeben_am ? currentLicensee.schluessel_ausgegeben_am : '';
+        keyReturnedDate.value = '';
+        historyLoading = false;
+        updateKeyFormState();
+        renderKeyHistory();
+    }
+
+    function loadKeyHistory() {
+        if (!currentLicenseeId) {
+            return;
+        }
+
+        if (keyHistoryController) {
+            keyHistoryController.abort();
+        }
+
+        const requestedLicenseeId = currentLicenseeId;
+        historyLoading = true;
+        updateKeyFormState();
+        clearKeyHistory();
+        updateHistoryMessage('Schlüsselverlauf wird geladen...');
+
+        keyHistoryController = new AbortController();
+
+        const params = new URLSearchParams({
+            action: 'get_licensee_key_history',
+            licensee_id: String(requestedLicenseeId),
+        });
+
+        fetch(`api.php?${params.toString()}`, { signal: keyHistoryController.signal })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Netzwerkfehler');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (keyModal.hidden || currentLicenseeId !== requestedLicenseeId) {
+                    return;
+                }
+
+                if (!data || data.success === false) {
+                    const message = data && data.message ? data.message : 'Der Schlüsselverlauf konnte nicht geladen werden.';
+                    throw new Error(message);
+                }
+
+                populateKeyModal(data);
+            })
+            .catch(error => {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+
+                historyLoading = false;
+                alert(error && error.message ? error.message : 'Der Schlüsselverlauf konnte nicht geladen werden.');
+                closeKeyModal();
+            })
+            .finally(() => {
+                keyHistoryController = null;
+            });
+    }
+
     function closeKeyModal() {
+        if (keyHistoryController) {
+            keyHistoryController.abort();
+            keyHistoryController = null;
+        }
+
         keyModal.hidden = true;
         keyForm.reset();
         currentLicenseeId = null;
         currentLicensee = null;
+        currentActiveHistory = null;
+        currentKeyHistory = [];
         saveInFlight = false;
+        historyLoading = false;
         keyLicenseeId.value = '';
         keyLicenseeName.textContent = '–';
         keyGivenDate.value = '';
+        keyReturnedDate.value = '';
+        keyGiven.disabled = false;
         keyGivenDate.disabled = true;
+        keyReturnedDate.disabled = true;
         if (keySubmitButton) {
             keySubmitButton.disabled = false;
         }
-    }
-
-    function updateKeyDateState() {
-        if (!keyGiven.checked) {
-            keyGivenDate.value = '';
-            keyGivenDate.disabled = true;
-            return;
-        }
-
-        keyGivenDate.disabled = false;
-        if (!String(keyGivenDate.value || '').trim()) {
-            keyGivenDate.value = getTodayDateString();
-        }
+        clearKeyHistory();
     }
 
     function openKeyModal(licensee) {
         currentLicensee = buildNormalizedLicensee(licensee);
         currentLicenseeId = currentLicensee && currentLicensee.id ? currentLicensee.id : null;
-        keyLicenseeId.value = currentLicenseeId ? String(currentLicenseeId) : '';
+        if (!currentLicenseeId) {
+            return;
+        }
+
+        saveInFlight = false;
+        historyLoading = true;
+        currentActiveHistory = null;
+        currentKeyHistory = [];
+
+        keyForm.reset();
+        keyLicenseeId.value = String(currentLicenseeId);
         keyLicenseeName.textContent = getDisplayName(currentLicensee);
         keyGiven.checked = !!(currentLicensee && currentLicensee.schluessel_ausgegeben);
         keyGivenDate.value = currentLicensee && currentLicensee.schluessel_ausgegeben_am ? currentLicensee.schluessel_ausgegeben_am : '';
-        updateKeyDateState();
+        keyReturnedDate.value = '';
+        clearKeyHistory();
+        updateHistoryMessage('Schlüsselverlauf wird geladen...');
         keyModal.hidden = false;
+        updateKeyFormState();
+        loadKeyHistory();
     }
 
     function mergeUpdatedLicensee(updatedLicensee) {
@@ -485,25 +710,29 @@
     });
 
     keyGiven.addEventListener('change', () => {
-        updateKeyDateState();
+        updateKeyFormState();
     });
 
     keyForm.addEventListener('submit', event => {
         event.preventDefault();
 
-        if (saveInFlight || !currentLicenseeId) {
+        if (saveInFlight || historyLoading || !currentLicenseeId) {
+            return;
+        }
+
+        if (!keyGiven.checked && !currentActiveHistory) {
+            alert('Für diesen Lizenznehmer ist aktuell kein Schlüssel ausgegeben.');
             return;
         }
 
         saveInFlight = true;
-        if (keySubmitButton) {
-            keySubmitButton.disabled = true;
-        }
+        updateKeyFormState();
 
         const payload = {
             licensee_id: currentLicenseeId,
             schluessel_ausgegeben: keyGiven.checked,
-            schluessel_ausgegeben_am: keyGiven.checked ? (keyGivenDate.value || '') : '',
+            schluessel_ausgegeben_am: keyGivenDate.value || '',
+            schluessel_zurueckgegeben_am: !keyGiven.checked && currentActiveHistory ? (keyReturnedDate.value || '') : '',
         };
 
         fetch('api.php?action=save_licensee_key', {
@@ -536,8 +765,8 @@
             })
             .finally(() => {
                 saveInFlight = false;
-                if (keySubmitButton) {
-                    keySubmitButton.disabled = false;
+                if (!historyLoading) {
+                    updateKeyFormState();
                 }
             });
     });
@@ -558,7 +787,7 @@
         }
 
         activeSearchController = new AbortController();
-        updateSearchMessage('Suche läuft…');
+        updateSearchMessage('Suche läuft...');
         clearSearchResults();
 
         const params = new URLSearchParams({ action: 'search_licensees', query });

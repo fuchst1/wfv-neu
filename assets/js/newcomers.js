@@ -216,6 +216,7 @@
             }
             updateTotal();
             updateAssignAgeInfo();
+            updateAssignLicenseNumberSuggestion();
         });
     }
 
@@ -595,27 +596,28 @@
         return field ? String(field.value || '').trim() : '';
     }
 
-    function fetchNextLicenseNumber(year) {
-        if (!year) {
+    function fetchNextLicenseNumber(year, licenseType) {
+        if (!year || !licenseType) {
             return Promise.resolve(null);
         }
 
-        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}`)
+        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}&license_type=${encodeURIComponent(licenseType)}`)
             .then(r => r.json())
             .then(result => (result && result.success && typeof result.next_license_number === 'number' ? result.next_license_number : null))
             .catch(() => null);
     }
 
     function updateAssignLicenseNumberSuggestion() {
-        if (!assignFields.year || !assignFields.licenseNumber || !assignFields.year.value) {
+        if (!assignFields.year || !assignFields.licenseNumber || !assignFields.year.value || !assignFields.type || !assignFields.type.value) {
             return;
         }
 
         const targetYear = assignFields.year.value;
+        const targetType = assignFields.type.value;
         const initialValue = getFieldValueSnapshot(assignFields.licenseNumber);
         const requestId = ++assignLicenseNumberRequestId;
-        fetchNextLicenseNumber(targetYear).then(nextLicenseNumber => {
-            if (requestId !== assignLicenseNumberRequestId || !assignFields.licenseNumber || assignFields.year.value !== String(targetYear)) {
+        fetchNextLicenseNumber(targetYear, targetType).then(nextLicenseNumber => {
+            if (requestId !== assignLicenseNumberRequestId || !assignFields.licenseNumber || !assignFields.type || assignFields.year.value !== String(targetYear) || assignFields.type.value !== String(targetType)) {
                 return;
             }
             if (getFieldValueSnapshot(assignFields.licenseNumber) !== initialValue) {

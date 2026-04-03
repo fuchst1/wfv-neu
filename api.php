@@ -80,6 +80,9 @@ try {
         case 'search_licensees':
             search_licensees();
             break;
+        case 'get_licensee_key_history':
+            get_licensee_key_history();
+            break;
         case 'save_licensee_key':
             save_licensee_key();
             break;
@@ -128,8 +131,14 @@ function lookup_zip(): void
 function get_next_license_number(): void
 {
     $year = (int)($_GET['year'] ?? 0);
+    $licenseType = trim((string)($_GET['license_type'] ?? ($_GET['lizenztyp'] ?? '')));
     if ($year < 2000) {
         echo json_encode(['success' => false, 'message' => 'Ungültiges Jahr.']);
+        return;
+    }
+
+    if (!is_valid_license_type($licenseType)) {
+        echo json_encode(['success' => false, 'message' => 'Ungültiger Lizenztyp.']);
         return;
     }
 
@@ -141,7 +150,9 @@ function get_next_license_number(): void
     echo json_encode([
         'success' => true,
         'year' => $year,
-        'next_license_number' => get_next_license_number_for_year($year),
+        'license_type' => $licenseType,
+        'license_number_group' => license_number_group_key_for_type($licenseType),
+        'next_license_number' => get_next_license_number_for_year($year, $licenseType),
     ]);
 }
 
@@ -164,14 +175,36 @@ function validate_year_license_number_input($value): array
     return ['value' => $licenseNumber, 'error' => null];
 }
 
-function has_duplicate_yearly_license_number(PDO $pdo, int $year, int $licenseNumber, ?int $excludeLicenseId = null): bool
+function duplicate_license_number_message(string $licenseType, string $yearContext = 'in diesem Jahr'): string
+{
+    return sprintf(
+        'Für diese Lizenznummer existiert %s bereits eine Lizenz in der Zählgruppe "%s".',
+        $yearContext,
+        license_number_group_label_for_type($licenseType)
+    );
+}
+
+function has_duplicate_yearly_license_number(PDO $pdo, int $year, int $licenseNumber, string $licenseType, ?int $excludeLicenseId = null): bool
 {
     ensure_year_exists($year);
     ensure_year_license_number_column($year, $pdo);
 
+    if (!is_valid_license_type($licenseType)) {
+        throw new InvalidArgumentException('Ungültiger Lizenztyp.');
+    }
+
     $licenseTable = license_table($year);
     $sql = "SELECT COUNT(*) FROM {$licenseTable} WHERE lizenznummer = :lizenznummer";
-    $params = ['lizenznummer' => $licenseNumber];
+    $params = [
+        'lizenznummer' => $licenseNumber,
+        'kinder_typ' => 'Kinder',
+    ];
+
+    if (is_kinder_license_type($licenseType)) {
+        $sql .= ' AND lizenztyp = :kinder_typ';
+    } else {
+        $sql .= ' AND lizenztyp <> :kinder_typ';
+    }
 
     if ($excludeLicenseId !== null && $excludeLicenseId > 0) {
         $sql .= ' AND id <> :exclude_id';
@@ -271,8 +304,7 @@ function save_license(): void
     $lizenznummer = (int)$licenseNumberValidation['value'];
     $gesamt = $kosten + $trinkgeld;
 
-    $allowedTypes = license_types();
-    if (!in_array($lizenztyp, $allowedTypes, true)) {
+    if (!is_valid_license_type($lizenztyp)) {
         echo json_encode(['success' => false, 'message' => 'Ungültiger Lizenztyp.']);
         return;
     }
@@ -281,11 +313,11 @@ function save_license(): void
     ensure_license_price_enum($pdo);
     ensure_year_license_number_column($year, $pdo);
 
-    if (has_duplicate_yearly_license_number($pdo, $year, $lizenznummer, $licenseId > 0 ? $licenseId : null) && !$force) {
+    if (has_duplicate_yearly_license_number($pdo, $year, $lizenznummer, $lizenztyp, $licenseId > 0 ? $licenseId : null) && !$force) {
         echo json_encode([
             'success' => false,
             'duplicate' => true,
-            'message' => 'Für diese Lizenznummer existiert in diesem Jahr bereits eine Lizenz.',
+            'message' => duplicate_license_number_message($lizenztyp, 'in diesem Jahr'),
             'license_number' => $lizenznummer,
         ]);
         return;
@@ -632,9 +664,8 @@ function move_license(): void
         return;
     }
 
-    $allowedTypes = license_types();
     $type = $data['lizenztyp'] ?? $row['lizenztyp'];
-    if (!in_array($type, $allowedTypes, true)) {
+    if (!is_valid_license_type($type)) {
         $type = $row['lizenztyp'];
     }
 
@@ -645,11 +676,11 @@ function move_license(): void
     }
 
     $lizenznummer = (int)$licenseNumberValidation['value'];
-    if (has_duplicate_yearly_license_number($pdo, $toYear, $lizenznummer) && !$force) {
+    if (has_duplicate_yearly_license_number($pdo, $toYear, $lizenznummer, $type) && !$force) {
         echo json_encode([
             'success' => false,
             'duplicate' => true,
-            'message' => 'Für diese Lizenznummer existiert im Zieljahr bereits eine Lizenz.',
+            'message' => duplicate_license_number_message($type, 'im Zieljahr'),
             'license_number' => $lizenznummer,
         ]);
         return;
@@ -1065,6 +1096,121 @@ function search_licensees(): void
     ], JSON_UNESCAPED_UNICODE);
 }
 
+function format_licensee_key_payload(array $licensee, ?array $activeHistory = null): array
+{
+    $activeIssueDate = ($activeHistory['schluessel_ausgegeben_am'] ?? '') !== ''
+        ? $activeHistory['schluessel_ausgegeben_am']
+        : null;
+    $cacheIssueDate = ($licensee['schluessel_ausgegeben_am'] ?? '') !== ''
+        ? $licensee['schluessel_ausgegeben_am']
+        : null;
+    $hasActiveKey = $activeHistory !== null || !empty($licensee['schluessel_ausgegeben']);
+    $issueDate = $activeIssueDate ?? ($hasActiveKey ? $cacheIssueDate : null);
+
+    return [
+        'id' => isset($licensee['id']) ? (int)$licensee['id'] : 0,
+        'vorname' => $licensee['vorname'] ?? null,
+        'nachname' => $licensee['nachname'] ?? null,
+        'schluessel_ausgegeben' => $hasActiveKey,
+        'schluessel_ausgegeben_am' => $issueDate,
+        'schluessel_ausgegeben_am_formatted' => format_date($issueDate),
+    ];
+}
+
+function format_licensee_key_history_entry(array $entry): array
+{
+    $issueDate = ($entry['schluessel_ausgegeben_am'] ?? '') !== ''
+        ? $entry['schluessel_ausgegeben_am']
+        : null;
+    $returnDate = ($entry['schluessel_zurueckgegeben_am'] ?? '') !== ''
+        ? $entry['schluessel_zurueckgegeben_am']
+        : null;
+
+    return [
+        'id' => isset($entry['id']) ? (int)$entry['id'] : 0,
+        'lizenznehmer_id' => isset($entry['lizenznehmer_id']) ? (int)$entry['lizenznehmer_id'] : 0,
+        'schluessel_ausgegeben_am' => $issueDate,
+        'schluessel_ausgegeben_am_formatted' => format_date($issueDate),
+        'schluessel_zurueckgegeben_am' => $returnDate,
+        'schluessel_zurueckgegeben_am_formatted' => format_date($returnDate),
+        'offen' => $returnDate === null,
+        'erstellt_am' => $entry['erstellt_am'] ?? null,
+        'aktualisiert_am' => $entry['aktualisiert_am'] ?? null,
+    ];
+}
+
+function fetch_licensee_key_record(PDO $pdo, int $licenseeId): ?array
+{
+    $stmt = $pdo->prepare(
+        'SELECT id, vorname, nachname, schluessel_ausgegeben, schluessel_ausgegeben_am
+         FROM lizenznehmer
+         WHERE id = :id'
+    );
+    $stmt->execute(['id' => $licenseeId]);
+    $licensee = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $licensee ?: null;
+}
+
+function fetch_active_licensee_key_history(PDO $pdo, int $licenseeId): ?array
+{
+    $historyTable = licensee_key_history_table();
+    $stmt = $pdo->prepare(
+        "SELECT id, lizenznehmer_id, schluessel_ausgegeben_am, schluessel_zurueckgegeben_am, erstellt_am, aktualisiert_am
+         FROM {$historyTable}
+         WHERE lizenznehmer_id = :licensee_id
+           AND schluessel_zurueckgegeben_am IS NULL
+         ORDER BY id DESC
+         LIMIT 1"
+    );
+    $stmt->execute(['licensee_id' => $licenseeId]);
+    $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $entry ?: null;
+}
+
+function fetch_licensee_key_history_entries(PDO $pdo, int $licenseeId): array
+{
+    $historyTable = licensee_key_history_table();
+    $stmt = $pdo->prepare(
+        "SELECT id, lizenznehmer_id, schluessel_ausgegeben_am, schluessel_zurueckgegeben_am, erstellt_am, aktualisiert_am
+         FROM {$historyTable}
+         WHERE lizenznehmer_id = :licensee_id
+         ORDER BY schluessel_ausgegeben_am DESC, id DESC"
+    );
+    $stmt->execute(['licensee_id' => $licenseeId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function get_licensee_key_history(): void
+{
+    $licenseeId = isset($_GET['licensee_id']) ? (int)$_GET['licensee_id'] : 0;
+    if ($licenseeId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Ungültige Lizenznehmer-ID.']);
+        return;
+    }
+
+    ensure_licensee_key_columns();
+
+    $pdo = get_pdo();
+    $licensee = fetch_licensee_key_record($pdo, $licenseeId);
+    if (!$licensee) {
+        echo json_encode(['success' => false, 'message' => 'Lizenznehmer nicht gefunden.']);
+        return;
+    }
+
+    $activeHistory = fetch_active_licensee_key_history($pdo, $licenseeId);
+    $historyEntries = fetch_licensee_key_history_entries($pdo, $licenseeId);
+
+    echo json_encode([
+        'success' => true,
+        'licensee' => format_licensee_key_payload($licensee, $activeHistory),
+        'active_history' => $activeHistory ? format_licensee_key_history_entry($activeHistory) : null,
+        'history' => array_map('format_licensee_key_history_entry', $historyEntries),
+    ], JSON_UNESCAPED_UNICODE);
+}
+
 function save_licensee_key(): void
 {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -1085,41 +1231,124 @@ function save_licensee_key(): void
     $keyGiven = filter_var($keyGivenRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     $schluesselAusgegeben = $keyGiven === null ? !empty($keyGivenRaw) : $keyGiven;
 
-    $dateValidation = validate_birthdate_input($data['schluessel_ausgegeben_am'] ?? null, 'Ausgegeben am');
-    if ($dateValidation['error']) {
-        echo json_encode(['success' => false, 'message' => $dateValidation['error']]);
+    $issueDateValidation = validate_birthdate_input($data['schluessel_ausgegeben_am'] ?? null, 'Ausgegeben am');
+    if ($issueDateValidation['error']) {
+        echo json_encode(['success' => false, 'message' => $issueDateValidation['error']]);
         return;
     }
 
-    $dateValue = $schluesselAusgegeben
-        ? ($dateValidation['value'] ?? app_today_string())
-        : null;
+    $returnDateValidation = validate_birthdate_input($data['schluessel_zurueckgegeben_am'] ?? null, 'Zurückgegeben am');
+    if ($returnDateValidation['error']) {
+        echo json_encode(['success' => false, 'message' => $returnDateValidation['error']]);
+        return;
+    }
 
     $pdo = get_pdo();
-    $stmt = $pdo->prepare('SELECT id, vorname, nachname, schluessel_ausgegeben, schluessel_ausgegeben_am FROM lizenznehmer WHERE id = :id');
-    $stmt->execute(['id' => $licenseeId]);
-    $licensee = $stmt->fetch(PDO::FETCH_ASSOC);
+    $licensee = fetch_licensee_key_record($pdo, $licenseeId);
     if (!$licensee) {
         echo json_encode(['success' => false, 'message' => 'Lizenznehmer nicht gefunden.']);
         return;
     }
 
-    $updateStmt = $pdo->prepare('UPDATE lizenznehmer SET schluessel_ausgegeben = :schluessel_ausgegeben, schluessel_ausgegeben_am = :schluessel_ausgegeben_am WHERE id = :id');
-    $updateStmt->execute([
-        'schluessel_ausgegeben' => $schluesselAusgegeben ? 1 : 0,
-        'schluessel_ausgegeben_am' => $dateValue,
-        'id' => $licenseeId,
-    ]);
+    $historyTable = licensee_key_history_table();
+
+    try {
+        $pdo->beginTransaction();
+        $lockStmt = $pdo->prepare('SELECT id FROM lizenznehmer WHERE id = :id FOR UPDATE');
+        $lockStmt->execute(['id' => $licenseeId]);
+
+        $activeHistory = fetch_active_licensee_key_history($pdo, $licenseeId);
+
+        if ($schluesselAusgegeben) {
+            $issueDate = $issueDateValidation['value'] ?? app_today_string();
+
+            if ($activeHistory) {
+                $updateHistoryStmt = $pdo->prepare(
+                    "UPDATE {$historyTable}
+                     SET schluessel_ausgegeben_am = :issue_date
+                     WHERE id = :id"
+                );
+                $updateHistoryStmt->execute([
+                    'issue_date' => $issueDate,
+                    'id' => $activeHistory['id'],
+                ]);
+            } else {
+                $insertHistoryStmt = $pdo->prepare(
+                    "INSERT INTO {$historyTable} (lizenznehmer_id, schluessel_ausgegeben_am)
+                     VALUES (:licensee_id, :issue_date)"
+                );
+                $insertHistoryStmt->execute([
+                    'licensee_id' => $licenseeId,
+                    'issue_date' => $issueDate,
+                ]);
+            }
+
+            $updateLicenseeStmt = $pdo->prepare(
+                'UPDATE lizenznehmer
+                 SET schluessel_ausgegeben = 1,
+                     schluessel_ausgegeben_am = :issue_date
+                 WHERE id = :id'
+            );
+            $updateLicenseeStmt->execute([
+                'issue_date' => $issueDate,
+                'id' => $licenseeId,
+            ]);
+        } else {
+            if (!$activeHistory) {
+                $pdo->rollBack();
+                echo json_encode(['success' => false, 'message' => 'Für diesen Lizenznehmer ist aktuell kein Schlüssel ausgegeben.']);
+                return;
+            }
+
+            $issueDate = $issueDateValidation['value']
+                ?? (($activeHistory['schluessel_ausgegeben_am'] ?? '') !== '' ? $activeHistory['schluessel_ausgegeben_am'] : app_today_string());
+            $returnDate = $returnDateValidation['value'] ?? app_today_string();
+
+            if ($returnDate < $issueDate) {
+                $pdo->rollBack();
+                echo json_encode(['success' => false, 'message' => 'Zurückgegeben am darf nicht vor Ausgegeben am liegen.']);
+                return;
+            }
+
+            $updateHistoryStmt = $pdo->prepare(
+                "UPDATE {$historyTable}
+                 SET schluessel_ausgegeben_am = :issue_date,
+                     schluessel_zurueckgegeben_am = :return_date
+                 WHERE id = :id"
+            );
+            $updateHistoryStmt->execute([
+                'issue_date' => $issueDate,
+                'return_date' => $returnDate,
+                'id' => $activeHistory['id'],
+            ]);
+
+            $updateLicenseeStmt = $pdo->prepare(
+                'UPDATE lizenznehmer
+                 SET schluessel_ausgegeben = 0,
+                     schluessel_ausgegeben_am = NULL
+                 WHERE id = :id'
+            );
+            $updateLicenseeStmt->execute([
+                'id' => $licenseeId,
+            ]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $throwable) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $throwable;
+    }
+
+    $updatedLicensee = fetch_licensee_key_record($pdo, $licenseeId);
+    $updatedActiveHistory = fetch_active_licensee_key_history($pdo, $licenseeId);
 
     echo json_encode([
         'success' => true,
         'message' => 'Schlüsselstatus gespeichert.',
-        'licensee' => [
-            'id' => $licenseeId,
-            'schluessel_ausgegeben' => $schluesselAusgegeben,
-            'schluessel_ausgegeben_am' => $dateValue,
-            'schluessel_ausgegeben_am_formatted' => format_date($dateValue),
-        ],
+        'licensee' => format_licensee_key_payload($updatedLicensee ?: $licensee, $updatedActiveHistory),
     ], JSON_UNESCAPED_UNICODE);
 }
 
@@ -1184,9 +1413,8 @@ function assign_newcomer(): void
     $date = $data['zahlungsdatum'] ?? null;
     $notes = $data['notizen'] ?? null;
 
-    $allowedTypes = license_types();
     $force = !empty($data['force']);
-    if ($applicantId <= 0 || $year < 2000 || !in_array($type, $allowedTypes, true) || $cost === null || $tip === null) {
+    if ($applicantId <= 0 || $year < 2000 || !is_valid_license_type($type) || $cost === null || $tip === null) {
         echo json_encode(['success' => false, 'message' => 'Ungültige Daten.']);
         return;
     }
@@ -1233,18 +1461,18 @@ function assign_newcomer(): void
 
     $licenseNumberValidation = array_key_exists('lizenznummer', $data)
         ? validate_year_license_number_input($data['lizenznummer'])
-        : ['value' => get_next_license_number_for_year($year, $pdo), 'error' => null];
+        : ['value' => get_next_license_number_for_year($year, $type, $pdo), 'error' => null];
     if ($licenseNumberValidation['error']) {
         echo json_encode(['success' => false, 'message' => $licenseNumberValidation['error']]);
         return;
     }
 
     $lizenznummer = (int)$licenseNumberValidation['value'];
-    if (has_duplicate_yearly_license_number($pdo, $year, $lizenznummer) && !$force) {
+    if (has_duplicate_yearly_license_number($pdo, $year, $lizenznummer, $type) && !$force) {
         echo json_encode([
             'success' => false,
             'duplicate' => true,
-            'message' => 'Für diese Lizenznummer existiert in diesem Jahr bereits eine Lizenz.',
+            'message' => duplicate_license_number_message($type, 'in diesem Jahr'),
             'license_number' => $lizenznummer,
         ]);
         return;

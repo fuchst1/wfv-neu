@@ -52,6 +52,10 @@ $keyLicensees = get_licensees_with_keys();
                 <h3>Lizenznehmer mit Schlüssel</h3>
                 <p>Aktuell ausgegebene Schlüssel: <strong id="keyOverviewCount"><?= count($keyLicensees) ?></strong></p>
             </div>
+            <div class="table-actions">
+                <a class="button-link inline" href="export.php?dataset=keys&format=csv">CSV exportieren</a>
+                <a class="button-link inline" href="export.php?dataset=keys&format=xlsx">XLSX exportieren</a>
+            </div>
         </div>
         <table class="summary-table" id="keyOverviewTable">
             <thead>
@@ -129,15 +133,45 @@ $keyLicensees = get_licensees_with_keys();
             <input type="hidden" id="keyLicenseeId">
             <section class="form-section">
                 <p class="muted">Lizenznehmer: <strong id="keyLicenseeName">–</strong></p>
-                <label class="form-checkbox-label" for="keyGiven">
+                <label class="key-status-toggle" for="keyGiven">
                     <input type="checkbox" id="keyGiven">
-                    <span>Schlüssel ausgegeben</span>
+                    <span class="key-status-toggle-control" aria-hidden="true">
+                        <span class="key-status-toggle-thumb"></span>
+                    </span>
+                    <span class="key-status-toggle-copy">
+                        <span class="key-status-toggle-title">Schlüssel ausgegeben</span>
+                        <span class="key-status-toggle-hint">Aktivieren, wenn der Spezialschlüssel aktuell beim Lizenznehmer ist.</span>
+                    </span>
                 </label>
-                <label>
-                    <span class="label-title">Ausgegeben am</span>
-                    <input type="date" id="keyGivenDate">
-                </label>
-                <p class="form-hint">Beim Aktivieren ohne Datum wird automatisch das heutige Datum vorgeschlagen.</p>
+                <div class="form-grid">
+                    <label>
+                        <span class="label-title">Ausgegeben am</span>
+                        <input type="date" id="keyGivenDate">
+                    </label>
+                    <label>
+                        <span class="label-title">Zurückgegeben am</span>
+                        <input type="date" id="keyReturnedDate">
+                    </label>
+                </div>
+                <p class="form-hint">Beim Ausgeben oder Zurücknehmen ohne Datum wird automatisch das heutige Datum vorgeschlagen.</p>
+            </section>
+            <section class="form-section">
+                <h3>Schlüsselverlauf</h3>
+                <p class="form-hint" id="keyHistoryState">Noch kein Schlüsselverlauf geladen.</p>
+                <table class="summary-table key-history-table" id="keyHistoryTable" hidden>
+                    <thead>
+                        <tr>
+                            <th>Ausgegeben am</th>
+                            <th>Zurückgegeben am</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keyHistoryBody">
+                        <tr>
+                            <td colspan="3" class="empty">Noch kein Schlüsselverlauf vorhanden.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </section>
             <footer class="modal-footer">
                 <button type="button" class="secondary" data-close>Abbrechen</button>

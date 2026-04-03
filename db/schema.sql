@@ -17,6 +17,19 @@ CREATE TABLE IF NOT EXISTS lizenznehmer (
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS lizenznehmer_schluessel_historie (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    lizenznehmer_id INT NOT NULL,
+    schluessel_ausgegeben_am DATE NOT NULL,
+    schluessel_zurueckgegeben_am DATE NULL,
+    erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lizenznehmer_schluessel_historie_lizenznehmer FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id) ON DELETE CASCADE,
+    INDEX idx_lizenznehmer_schluessel_historie_lizenznehmer (lizenznehmer_id),
+    INDEX idx_lizenznehmer_schluessel_historie_offen (lizenznehmer_id, schluessel_zurueckgegeben_am),
+    INDEX idx_lizenznehmer_schluessel_historie_ausgegeben_am (schluessel_ausgegeben_am)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS sperrliste (
     id INT PRIMARY KEY AUTO_INCREMENT,
     vorname VARCHAR(100) NOT NULL,

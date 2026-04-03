@@ -218,6 +218,7 @@
             toggleBoat(BOAT_LICENSE_TYPES.has(type));
             updateTotal();
             updateLicenseAgeState();
+            updateCurrentYearLicenseNumberProposal();
         });
     }
 
@@ -240,6 +241,8 @@
     if (extendFields.type) {
         extendFields.type.addEventListener('change', () => {
             updateExtendPricing();
+            updateExtendLicenseNumberProposal();
+            updateExtendSubmitButtonState();
         });
     }
 
@@ -713,26 +716,27 @@
         return Number.isInteger(parsed) && parsed > 0;
     }
 
-    function fetchNextLicenseNumber(year) {
-        if (!year) {
+    function fetchNextLicenseNumber(year, licenseType) {
+        if (!year || !licenseType) {
             return Promise.resolve(null);
         }
 
-        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}`)
+        return fetch(`api.php?action=get_next_license_number&year=${encodeURIComponent(year)}&license_type=${encodeURIComponent(licenseType)}`)
             .then(r => r.json())
             .then(result => (result && result.success && typeof result.next_license_number === 'number' ? result.next_license_number : null))
             .catch(() => null);
     }
 
     function updateCurrentYearLicenseNumberProposal() {
-        if (!licenseFields.licenseNumber) {
+        if (!licenseFields.licenseNumber || !licenseFields.type || !licenseFields.type.value) {
             return;
         }
 
         const initialValue = getFieldValueSnapshot(licenseFields.licenseNumber);
+        const targetType = licenseFields.type.value;
         const requestId = ++licenseNumberRequestId;
-        fetchNextLicenseNumber(CURRENT_YEAR).then(nextLicenseNumber => {
-            if (requestId !== licenseNumberRequestId || !licenseFields.licenseNumber) {
+        fetchNextLicenseNumber(CURRENT_YEAR, targetType).then(nextLicenseNumber => {
+            if (requestId !== licenseNumberRequestId || !licenseFields.licenseNumber || !licenseFields.type || licenseFields.type.value !== String(targetType)) {
                 return;
             }
             if (getFieldValueSnapshot(licenseFields.licenseNumber) !== initialValue) {
@@ -745,15 +749,16 @@
     }
 
     function updateExtendLicenseNumberProposal() {
-        if (!extendFields.licenseNumber || !extendFields.year || !extendFields.year.value) {
+        if (!extendFields.licenseNumber || !extendFields.year || !extendFields.year.value || !extendFields.type || !extendFields.type.value) {
             return;
         }
 
         const initialValue = getFieldValueSnapshot(extendFields.licenseNumber);
         const requestId = ++extendLicenseNumberRequestId;
         const targetYear = extendFields.year.value;
-        fetchNextLicenseNumber(targetYear).then(nextLicenseNumber => {
-            if (requestId !== extendLicenseNumberRequestId || !extendFields.licenseNumber || extendFields.year.value !== String(targetYear)) {
+        const targetType = extendFields.type.value;
+        fetchNextLicenseNumber(targetYear, targetType).then(nextLicenseNumber => {
+            if (requestId !== extendLicenseNumberRequestId || !extendFields.licenseNumber || !extendFields.type || extendFields.year.value !== String(targetYear) || extendFields.type.value !== String(targetType)) {
                 return;
             }
             if (getFieldValueSnapshot(extendFields.licenseNumber) !== initialValue) {

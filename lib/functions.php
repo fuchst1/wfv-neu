@@ -51,9 +51,34 @@ function boats_table(): string
     return 'boote';
 }
 
+function licensee_key_history_table(): string
+{
+    return 'lizenznehmer_schluessel_historie';
+}
+
 function license_types(): array
 {
     return ['Angel', 'Daubel', 'Boot', 'Intern', 'Kinder', 'Jugend'];
+}
+
+function is_valid_license_type(string $licenseType): bool
+{
+    return in_array($licenseType, license_types(), true);
+}
+
+function is_kinder_license_type(string $licenseType): bool
+{
+    return $licenseType === 'Kinder';
+}
+
+function license_number_group_key_for_type(string $licenseType): string
+{
+    return is_kinder_license_type($licenseType) ? 'kinder' : 'standard';
+}
+
+function license_number_group_label_for_type(string $licenseType): string
+{
+    return is_kinder_license_type($licenseType) ? 'Kinder' : 'Standard';
 }
 
 function license_type_labels(): array
@@ -195,6 +220,49 @@ function ensure_licensee_key_columns(): void
     $pdo = get_pdo();
     ensure_column_exists($pdo, 'lizenznehmer', 'schluessel_ausgegeben', 'schluessel_ausgegeben TINYINT(1) NOT NULL DEFAULT 0 AFTER fischerkartennummer');
     ensure_column_exists($pdo, 'lizenznehmer', 'schluessel_ausgegeben_am', 'schluessel_ausgegeben_am DATE NULL AFTER schluessel_ausgegeben');
+    ensure_licensee_key_history_table($pdo);
+    $ensured = true;
+}
+
+function ensure_licensee_key_history_table(?PDO $pdo = null): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $pdo = $pdo ?? get_pdo();
+    $historyTable = licensee_key_history_table();
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS {$historyTable} (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        lizenznehmer_id INT NOT NULL,
+        schluessel_ausgegeben_am DATE NOT NULL,
+        schluessel_zurueckgegeben_am DATE NULL,
+        erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        aktualisiert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_lizenznehmer_schluessel_historie_lizenznehmer FOREIGN KEY (lizenznehmer_id) REFERENCES lizenznehmer(id) ON DELETE CASCADE,
+        INDEX idx_lizenznehmer_schluessel_historie_lizenznehmer (lizenznehmer_id),
+        INDEX idx_lizenznehmer_schluessel_historie_offen (lizenznehmer_id, schluessel_zurueckgegeben_am),
+        INDEX idx_lizenznehmer_schluessel_historie_ausgegeben_am (schluessel_ausgegeben_am)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $backfillStmt = $pdo->prepare(
+        "INSERT INTO {$historyTable} (lizenznehmer_id, schluessel_ausgegeben_am)
+         SELECT lizenznehmer.id, COALESCE(lizenznehmer.schluessel_ausgegeben_am, :today)
+         FROM lizenznehmer
+         WHERE lizenznehmer.schluessel_ausgegeben = 1
+           AND NOT EXISTS (
+               SELECT 1
+               FROM {$historyTable} history
+               WHERE history.lizenznehmer_id = lizenznehmer.id
+                 AND history.schluessel_zurueckgegeben_am IS NULL
+           )"
+    );
+    $backfillStmt->execute([
+        'today' => app_today_string(),
+    ]);
+
     $ensured = true;
 }
 
@@ -276,14 +344,28 @@ function ensure_year_license_number_column(int $year, ?PDO $pdo = null): void
     ensure_column_exists($pdo, $licenseTable, 'lizenznummer', 'lizenznummer INT NULL AFTER lizenznehmer_id');
 }
 
-function get_next_license_number_for_year(int $year, ?PDO $pdo = null): int
+function get_next_license_number_for_year(int $year, string $licenseType, ?PDO $pdo = null): int
 {
     $pdo = $pdo ?? get_pdo();
     ensure_year_exists($year);
     ensure_year_license_number_column($year, $pdo);
 
+    if (!is_valid_license_type($licenseType)) {
+        throw new InvalidArgumentException('Ungültiger Lizenztyp.');
+    }
+
     $licenseTable = license_table($year);
-    $stmt = $pdo->query("SELECT COALESCE(MAX(lizenznummer), 0) + 1 FROM {$licenseTable}");
+    if (is_kinder_license_type($licenseType)) {
+        $stmt = $pdo->prepare("SELECT COALESCE(MAX(lizenznummer), 0) + 1 FROM {$licenseTable} WHERE lizenztyp = :lizenztyp");
+        $stmt->execute([
+            'lizenztyp' => 'Kinder',
+        ]);
+    } else {
+        $stmt = $pdo->prepare("SELECT COALESCE(MAX(lizenznummer), 0) + 1 FROM {$licenseTable} WHERE lizenztyp <> :lizenztyp");
+        $stmt->execute([
+            'lizenztyp' => 'Kinder',
+        ]);
+    }
     $nextNumber = (int)$stmt->fetchColumn();
 
     return $nextNumber > 0 ? $nextNumber : 1;

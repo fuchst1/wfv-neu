@@ -619,6 +619,11 @@ details {
     color: #475569;
 }
 
+.badge-key-returned {
+    background: #eef2ff;
+    color: #3730a3;
+}
+
 .licensee-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -690,17 +695,108 @@ details {
     gap: 0.75rem;
 }
 
-.form-checkbox-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.65rem;
-    cursor: pointer;
-    font-weight: 600;
+.key-history-table {
+    margin-top: 1rem;
 }
 
-.form-checkbox-label input[type="checkbox"] {
-    width: auto;
+.key-history-table td:last-child,
+.key-history-table th:last-child {
+    white-space: nowrap;
+}
+
+.key-status-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.95rem 1rem;
+    margin: 0.5rem 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.key-status-toggle:hover {
+    border-color: #bfd6c8;
+    box-shadow: 0 8px 18px rgba(29, 111, 66, 0.08);
+}
+
+.key-status-toggle input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.key-status-toggle-control {
+    position: relative;
+    flex: 0 0 auto;
+    width: 3.4rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.key-status-toggle-thumb {
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    transition: transform 0.2s ease;
+}
+
+.key-status-toggle-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+}
+
+.key-status-toggle-title {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.key-status-toggle-hint {
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.key-status-toggle input[type="checkbox"]:checked + .key-status-toggle-control {
+    background: var(--primary);
+}
+
+.key-status-toggle input[type="checkbox"]:checked + .key-status-toggle-control .key-status-toggle-thumb {
+    transform: translateX(1.4rem);
+}
+
+.key-status-toggle input[type="checkbox"]:checked ~ .key-status-toggle-copy .key-status-toggle-title {
+    color: var(--primary-dark);
+}
+
+.key-status-toggle input[type="checkbox"]:focus-visible + .key-status-toggle-control {
+    outline: 3px solid rgba(29, 111, 66, 0.2);
+    outline-offset: 3px;
+}
+
+.key-status-toggle input[type="checkbox"]:disabled + .key-status-toggle-control {
+    opacity: 0.7;
+}
+
+.key-status-toggle input[type="checkbox"]:disabled ~ .key-status-toggle-copy {
+    opacity: 0.75;
 }
 
 @media (max-width: 768px) {
@@ -726,5 +822,9 @@ details {
 
     .licensee-card-actions button {
         width: 100%;
+    }
+
+    .key-status-toggle {
+        align-items: flex-start;
     }
 }

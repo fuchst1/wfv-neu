@@ -1,58 +1,112 @@
 <?php
 require_once __DIR__ . '/lib/functions.php';
 
-$year = isset($_GET['jahr']) ? (int)$_GET['jahr'] : 0;
-if ($year < 2000) {
-    http_response_code(400);
-    echo 'Ungültiges Jahr.';
-    exit;
-}
-
-ensure_year_exists($year);
-$licenses = get_licensees_for_year($year);
-
+$dataset = strtolower(trim((string)($_GET['dataset'] ?? 'licenses')));
 $format = strtolower($_GET['format'] ?? 'csv');
 if ($format !== 'xlsx') {
     $format = 'csv';
 }
 
-$columns = [
-    'Lizenz-ID' => fn(array $row): string => (string)($row['lizenz_id'] ?? ''),
-    'Nachname' => fn(array $row): string => trim((string)($row['nachname'] ?? '')),
-    'Vorname' => fn(array $row): string => trim((string)($row['vorname'] ?? '')),
-    'Straße' => fn(array $row): string => trim((string)($row['strasse'] ?? '')),
-    'PLZ' => fn(array $row): string => trim((string)($row['plz'] ?? '')),
-    'Ort' => fn(array $row): string => trim((string)($row['ort'] ?? '')),
-    'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
-    'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
-    'Geburtsdatum' => fn(array $row): string => format_export_date($row['geburtsdatum'] ?? null),
-    'Alter' => fn(array $row): string => format_age_value($row['geburtsdatum'] ?? null),
-    'Fischerkartennummer' => fn(array $row): string => trim((string)($row['fischerkartennummer'] ?? '')),
-    'Lizenztyp' => fn(array $row): string => trim((string)($row['lizenztyp'] ?? '')),
-    'Kosten (€)' => fn(array $row): string => format_decimal($row['kosten'] ?? null),
-    'Trinkgeld (€)' => fn(array $row): string => format_decimal($row['trinkgeld'] ?? null),
-    'Gesamt (€)' => fn(array $row): string => format_decimal($row['gesamt'] ?? null),
-    'Zahlungsdatum' => fn(array $row): string => format_export_date($row['zahlungsdatum'] ?? null),
-    'Lizenznotizen' => fn(array $row): string => normalize_newlines((string)($row['lizenz_notizen'] ?? '')),
-    'Bootsnummer' => fn(array $row): string => trim((string)($row['bootnummer'] ?? '')),
-    'Boot-Notizen' => fn(array $row): string => normalize_newlines((string)($row['boot_notizen'] ?? '')),
-];
+if ($dataset === 'keys') {
+    [$filenameBase, $sheetName, $columns, $rows] = build_active_keys_export();
+} elseif ($dataset === 'licenses') {
+    $year = isset($_GET['jahr']) ? (int)$_GET['jahr'] : 0;
+    if ($year < 2000) {
+        http_response_code(400);
+        echo 'Ungültiges Jahr.';
+        exit;
+    }
 
-$rows = [];
-foreach ($licenses as $row) {
-    $rows[] = array_values(array_map(fn(callable $extractor) => $extractor($row), $columns));
+    [$filenameBase, $sheetName, $columns, $rows] = build_license_export($year);
+} else {
+    http_response_code(400);
+    echo 'Ungültiger Export.';
+    exit;
 }
 
 if ($format === 'xlsx') {
     if (!class_exists('ZipArchive')) {
         $format = 'csv';
     } else {
-        export_xlsx($year, $columns, $rows);
+        export_xlsx($filenameBase, $sheetName, $columns, $rows);
         exit;
     }
 }
 
-export_csv($year, $columns, $rows);
+export_csv($filenameBase, $columns, $rows);
+
+function build_license_export(int $year): array
+{
+    ensure_year_exists($year);
+    $licenses = get_licensees_for_year($year);
+
+    $columns = [
+        'Lizenz-ID' => fn(array $row): string => (string)($row['lizenz_id'] ?? ''),
+        'Nachname' => fn(array $row): string => trim((string)($row['nachname'] ?? '')),
+        'Vorname' => fn(array $row): string => trim((string)($row['vorname'] ?? '')),
+        'Straße' => fn(array $row): string => trim((string)($row['strasse'] ?? '')),
+        'PLZ' => fn(array $row): string => trim((string)($row['plz'] ?? '')),
+        'Ort' => fn(array $row): string => trim((string)($row['ort'] ?? '')),
+        'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
+        'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
+        'Geburtsdatum' => fn(array $row): string => format_export_date($row['geburtsdatum'] ?? null),
+        'Alter' => fn(array $row): string => format_age_value($row['geburtsdatum'] ?? null),
+        'Fischerkartennummer' => fn(array $row): string => trim((string)($row['fischerkartennummer'] ?? '')),
+        'Lizenztyp' => fn(array $row): string => trim((string)($row['lizenztyp'] ?? '')),
+        'Kosten (€)' => fn(array $row): string => format_decimal($row['kosten'] ?? null),
+        'Trinkgeld (€)' => fn(array $row): string => format_decimal($row['trinkgeld'] ?? null),
+        'Gesamt (€)' => fn(array $row): string => format_decimal($row['gesamt'] ?? null),
+        'Zahlungsdatum' => fn(array $row): string => format_export_date($row['zahlungsdatum'] ?? null),
+        'Lizenznotizen' => fn(array $row): string => normalize_newlines((string)($row['lizenz_notizen'] ?? '')),
+        'Bootsnummer' => fn(array $row): string => trim((string)($row['bootnummer'] ?? '')),
+        'Boot-Notizen' => fn(array $row): string => normalize_newlines((string)($row['boot_notizen'] ?? '')),
+    ];
+
+    return [
+        'lizenzen_' . $year,
+        'Lizenzen',
+        $columns,
+        build_export_rows($licenses, $columns),
+    ];
+}
+
+function build_active_keys_export(): array
+{
+    $licensees = get_licensees_with_keys();
+
+    $columns = [
+        'Lizenznehmer-ID' => fn(array $row): string => (string)($row['id'] ?? ''),
+        'Nachname' => fn(array $row): string => trim((string)($row['nachname'] ?? '')),
+        'Vorname' => fn(array $row): string => trim((string)($row['vorname'] ?? '')),
+        'Straße' => fn(array $row): string => trim((string)($row['strasse'] ?? '')),
+        'PLZ' => fn(array $row): string => trim((string)($row['plz'] ?? '')),
+        'Ort' => fn(array $row): string => trim((string)($row['ort'] ?? '')),
+        'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
+        'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
+        'Geburtsdatum' => fn(array $row): string => format_export_date($row['geburtsdatum'] ?? null),
+        'Alter' => fn(array $row): string => format_age_value($row['geburtsdatum'] ?? null),
+        'Fischerkartennummer' => fn(array $row): string => trim((string)($row['fischerkartennummer'] ?? '')),
+        'Schlüsselstatus' => static fn(): string => 'Aktiv',
+        'Ausgegeben am' => fn(array $row): string => format_export_date($row['schluessel_ausgegeben_am'] ?? null),
+    ];
+
+    return [
+        'schluessel_aktiv',
+        'Aktive Schluessel',
+        $columns,
+        build_export_rows($licensees, $columns),
+    ];
+}
+
+function build_export_rows(array $sourceRows, array $columns): array
+{
+    $rows = [];
+    foreach ($sourceRows as $row) {
+        $rows[] = array_values(array_map(fn(callable $extractor) => $extractor($row), $columns));
+    }
+
+    return $rows;
+}
 
 function format_decimal($value): string
 {
@@ -92,10 +146,10 @@ function normalize_newlines(string $value): string
     return str_replace(["\r\n", "\r"], "\n", trim($value));
 }
 
-function export_csv(int $year, array $columns, array $rows): void
+function export_csv(string $filenameBase, array $columns, array $rows): void
 {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="lizenzen_' . $year . '.csv"');
+    header('Content-Disposition: attachment; filename="' . $filenameBase . '.csv"');
 
     $output = fopen('php://output', 'wb');
     if ($output === false) {
@@ -111,7 +165,7 @@ function export_csv(int $year, array $columns, array $rows): void
     fclose($output);
 }
 
-function export_xlsx(int $year, array $columns, array $rows): void
+function export_xlsx(string $filenameBase, string $sheetName, array $columns, array $rows): void
 {
     $sheetRows = [];
     $sheetRows[] = array_keys($columns);
@@ -134,7 +188,7 @@ function export_xlsx(int $year, array $columns, array $rows): void
 
     $zip->addFromString('[Content_Types].xml', get_content_types_xml());
     $zip->addFromString('_rels/.rels', get_root_rels_xml());
-    $zip->addFromString('xl/workbook.xml', get_workbook_xml());
+    $zip->addFromString('xl/workbook.xml', get_workbook_xml($sheetName));
     $zip->addFromString('xl/_rels/workbook.xml.rels', get_workbook_rels_xml());
     $zip->addFromString('xl/styles.xml', get_styles_xml());
     $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
@@ -142,7 +196,7 @@ function export_xlsx(int $year, array $columns, array $rows): void
     $zip->close();
 
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="lizenzen_' . $year . '.xlsx"');
+    header('Content-Disposition: attachment; filename="' . $filenameBase . '.xlsx"');
     header('Content-Length: ' . filesize($tempFile));
 
     readfile($tempFile);
@@ -205,12 +259,12 @@ function get_root_rels_xml(): string
         . '</Relationships>';
 }
 
-function get_workbook_xml(): string
+function get_workbook_xml(string $sheetName): string
 {
     return '<?xml version="1.0" encoding="UTF-8"?>'
         . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
         . '<sheets>'
-        . '<sheet name="Lizenzen" sheetId="1" r:id="rId1"/>'
+        . '<sheet name="' . escape_xml($sheetName) . '" sheetId="1" r:id="rId1"/>'
         . '</sheets>'
         . '</workbook>';
 }
