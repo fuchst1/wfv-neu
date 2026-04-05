@@ -2,13 +2,19 @@
 require_once __DIR__ . '/lib/functions.php';
 
 $dataset = strtolower(trim((string)($_GET['dataset'] ?? 'licenses')));
-$format = strtolower($_GET['format'] ?? 'csv');
+$format = strtolower($_GET['format'] ?? 'xlsx');
 if ($format !== 'xlsx') {
-    $format = 'csv';
+    http_response_code(400);
+    echo 'Ungültiges Exportformat.';
+    exit;
 }
 
 if ($dataset === 'keys') {
     [$filenameBase, $sheetName, $columns, $rows] = build_active_keys_export();
+} elseif ($dataset === 'boats') {
+    [$filenameBase, $sheetName, $columns, $rows] = build_boats_export();
+} elseif ($dataset === 'newcomers') {
+    [$filenameBase, $sheetName, $columns, $rows] = build_newcomers_export();
 } elseif ($dataset === 'licenses') {
     $year = isset($_GET['jahr']) ? (int)$_GET['jahr'] : 0;
     if ($year < 2000) {
@@ -24,16 +30,14 @@ if ($dataset === 'keys') {
     exit;
 }
 
-if ($format === 'xlsx') {
-    if (!class_exists('ZipArchive')) {
-        $format = 'csv';
-    } else {
-        export_xlsx($filenameBase, $sheetName, $columns, $rows);
-        exit;
-    }
+if (!class_exists('ZipArchive')) {
+    http_response_code(500);
+    echo 'XLSX-Export ist auf diesem System nicht verfügbar.';
+    exit;
 }
 
-export_csv($filenameBase, $columns, $rows);
+export_xlsx($filenameBase, $sheetName, $columns, $rows);
+exit;
 
 function build_license_export(int $year): array
 {
@@ -98,6 +102,61 @@ function build_active_keys_export(): array
     ];
 }
 
+function build_newcomers_export(): array
+{
+    $newcomers = get_newcomers();
+
+    $columns = [
+        'Neuwerber-ID' => fn(array $row): string => (string)($row['id'] ?? ''),
+        'Nachname' => fn(array $row): string => trim((string)($row['nachname'] ?? '')),
+        'Vorname' => fn(array $row): string => trim((string)($row['vorname'] ?? '')),
+        'Straße' => fn(array $row): string => trim((string)($row['strasse'] ?? '')),
+        'PLZ' => fn(array $row): string => trim((string)($row['plz'] ?? '')),
+        'Ort' => fn(array $row): string => trim((string)($row['ort'] ?? '')),
+        'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
+        'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
+        'Geburtsdatum' => fn(array $row): string => format_export_date($row['geburtsdatum'] ?? null),
+        'Alter' => fn(array $row): string => format_age_value($row['geburtsdatum'] ?? null),
+        'Fischerkartennummer' => fn(array $row): string => trim((string)($row['fischerkartennummer'] ?? '')),
+        'Bewerbungsdatum' => fn(array $row): string => format_export_date($row['bewerbungsdatum'] ?? null),
+        'Notizen' => fn(array $row): string => normalize_newlines((string)($row['notizen'] ?? '')),
+    ];
+
+    return [
+        'neuwerber',
+        'Neuwerber',
+        $columns,
+        build_export_rows($newcomers, $columns),
+    ];
+}
+
+function build_boats_export(): array
+{
+    $boats = get_boats_overview();
+
+    $columns = [
+        'Boot-ID' => fn(array $row): string => (string)($row['boot_id'] ?? ''),
+        'Bootsnummer' => fn(array $row): string => trim((string)($row['bootnummer'] ?? '')),
+        'Bootsnotizen' => fn(array $row): string => normalize_newlines((string)($row['boot_notizen'] ?? '')),
+        'Lizenznehmer-ID' => fn(array $row): string => (string)($row['lizenznehmer_id'] ?? ''),
+        'Nachname' => fn(array $row): string => trim((string)($row['nachname'] ?? '')),
+        'Vorname' => fn(array $row): string => trim((string)($row['vorname'] ?? '')),
+        'Telefon' => fn(array $row): string => trim((string)($row['telefon'] ?? '')),
+        'E-Mail' => fn(array $row): string => trim((string)($row['email'] ?? '')),
+        'Lizenzjahr' => fn(array $row): string => isset($row['jahr']) && $row['jahr'] !== null ? (string)$row['jahr'] : '',
+        'Lizenz-ID' => fn(array $row): string => isset($row['lizenz_id']) && $row['lizenz_id'] !== null ? (string)$row['lizenz_id'] : '',
+        'Zahlungsdatum' => fn(array $row): string => format_export_date($row['zahlungsdatum'] ?? null),
+        'Lizenznotizen' => fn(array $row): string => normalize_newlines((string)($row['lizenz_notizen'] ?? '')),
+    ];
+
+    return [
+        'boote',
+        'Boote',
+        $columns,
+        build_export_rows($boats, $columns),
+    ];
+}
+
 function build_export_rows(array $sourceRows, array $columns): array
 {
     $rows = [];
@@ -144,25 +203,6 @@ function format_age_value($value): string
 function normalize_newlines(string $value): string
 {
     return str_replace(["\r\n", "\r"], "\n", trim($value));
-}
-
-function export_csv(string $filenameBase, array $columns, array $rows): void
-{
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filenameBase . '.csv"');
-
-    $output = fopen('php://output', 'wb');
-    if ($output === false) {
-        throw new RuntimeException('Konnte Export nicht öffnen.');
-    }
-
-    fwrite($output, "\xEF\xBB\xBF");
-    fputcsv($output, array_keys($columns), ';');
-    foreach ($rows as $row) {
-        fputcsv($output, $row, ';');
-    }
-
-    fclose($output);
 }
 
 function export_xlsx(string $filenameBase, string $sheetName, array $columns, array $rows): void

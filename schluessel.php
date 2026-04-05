@@ -53,7 +53,6 @@ $keyLicensees = get_licensees_with_keys();
                 <p>Aktuell ausgegebene Schlüssel: <strong id="keyOverviewCount"><?= count($keyLicensees) ?></strong></p>
             </div>
             <div class="table-actions">
-                <a class="button-link inline" href="export.php?dataset=keys&format=csv">CSV exportieren</a>
                 <a class="button-link inline" href="export.php?dataset=keys&format=xlsx">XLSX exportieren</a>
             </div>
         </div>
@@ -63,14 +62,15 @@ $keyLicensees = get_licensees_with_keys();
                     <th>Lizenznehmer</th>
                     <th>Fischerkartennummer</th>
                     <th>Adresse</th>
+                    <th>Schlüssel</th>
                     <th>Ausgegeben am</th>
-                    <th>Aktionen</th>
+                    <th>Historie</th>
                 </tr>
             </thead>
             <tbody id="keyOverviewBody">
                 <?php if (!$keyLicensees): ?>
                     <tr data-empty-row>
-                        <td colspan="5" class="empty">Aktuell ist kein Schlüssel ausgegeben.</td>
+                        <td colspan="6" class="empty">Aktuell ist kein Schlüssel ausgegeben.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($keyLicensees as $licensee): ?>
@@ -111,9 +111,21 @@ $keyLicensees = get_licensees_with_keys();
                             <td><strong><?= htmlspecialchars(trim((string)(($licensee['nachname'] ?? '') . ', ' . ($licensee['vorname'] ?? '')), ' ,')) ?></strong></td>
                             <td><?= htmlspecialchars($licensee['fischerkartennummer'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($addressParts ? implode(', ', $addressParts) : '–') ?></td>
+                            <td>
+                                <label class="key-status-inline key-status-inline-compact" for="key-overview-toggle-<?= (int)$keyLicenseeRow['id'] ?>">
+                                    <span class="sr-only">Schlüsselstatus für <?= htmlspecialchars(trim((string)(($licensee['vorname'] ?? '') . ' ' . ($licensee['nachname'] ?? '')), ' ')) ?> ändern</span>
+                                    <input type="checkbox" id="key-overview-toggle-<?= (int)$keyLicenseeRow['id'] ?>"<?= !empty($keyLicenseeRow['schluessel_ausgegeben']) ? ' checked' : '' ?>>
+                                    <span class="key-status-inline-control" aria-hidden="true">
+                                        <span class="key-status-inline-thumb"></span>
+                                    </span>
+                                    <span class="key-status-inline-copy">
+                                        <span class="key-status-inline-title"><?= !empty($keyLicenseeRow['schluessel_ausgegeben']) ? 'Aktiv' : 'Inaktiv' ?></span>
+                                    </span>
+                                </label>
+                            </td>
                             <td><?= htmlspecialchars(format_date(($licensee['schluessel_ausgegeben_am'] ?? '') !== '' ? $licensee['schluessel_ausgegeben_am'] : null) ?? '–') ?></td>
                             <td class="actions">
-                                <button type="button" class="primary edit-key">Schlüssel bearbeiten</button>
+                                <button type="button" class="secondary edit-key">Historie</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>

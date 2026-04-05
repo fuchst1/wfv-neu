@@ -53,6 +53,7 @@ $licenseTypeLabels = license_type_labels();
         <div class="table-actions-bar">
             <div class="table-actions">
                 <button class="primary" id="openAddApplicant">Neuwerber hinzufügen</button>
+                <a class="button-link inline" href="export.php?dataset=newcomers&format=xlsx">XLSX exportieren</a>
             </div>
         </div>
         <div class="table-search-row">

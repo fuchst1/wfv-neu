@@ -29,6 +29,8 @@
     let currentKeyHistory = [];
     let saveInFlight = false;
     let historyLoading = false;
+    const inlineSaveLicenseeIds = new Set();
+    const inlinePendingKeyStates = new Map();
 
     if (!searchForm || !searchInput || !searchResults || !searchMessage || !keyModal || !keyForm || !keyGiven || !keyGivenDate || !keyReturnedDate || !keyHistoryState || !keyHistoryTable || !keyHistoryBody) {
         return;
@@ -72,6 +74,19 @@
         return today.toISOString().split('T')[0];
     }
 
+    function isInlineKeySavePending(licenseeId) {
+        return inlineSaveLicenseeIds.has(Number(licenseeId));
+    }
+
+    function getEffectiveInlineKeyState(licensee) {
+        const licenseeId = licensee && licensee.id ? Number(licensee.id) : 0;
+        if (licenseeId && inlinePendingKeyStates.has(licenseeId)) {
+            return !!inlinePendingKeyStates.get(licenseeId);
+        }
+
+        return !!(licensee && licensee.schluessel_ausgegeben);
+    }
+
     function getDisplayName(licensee) {
         const parts = [];
         if (licensee && licensee.vorname) {
@@ -101,6 +116,127 @@
         }
 
         return licensee && licensee.id ? `#${licensee.id}` : 'Unbekannter Lizenznehmer';
+    }
+
+    function findKnownLicensee(licenseeId) {
+        const normalizedLicenseeId = Number(licenseeId);
+        if (!normalizedLicenseeId) {
+            return null;
+        }
+
+        const searchMatch = currentResults.find(result => result && result.id === normalizedLicenseeId);
+        if (searchMatch) {
+            return searchMatch;
+        }
+
+        const overviewMatch = keyOverviewLicensees.find(result => result && result.id === normalizedLicenseeId);
+        if (overviewMatch) {
+            return overviewMatch;
+        }
+
+        if (currentLicensee && currentLicensee.id === normalizedLicenseeId) {
+            return currentLicensee;
+        }
+
+        return null;
+    }
+
+    function buildInlineKeySavePayload(licensee, keyGivenState) {
+        const normalizedLicensee = buildNormalizedLicensee(licensee);
+        if (!normalizedLicensee) {
+            return null;
+        }
+
+        return {
+            licensee_id: normalizedLicensee.id,
+            schluessel_ausgegeben: !!keyGivenState,
+            schluessel_ausgegeben_am: normalizedLicensee.schluessel_ausgegeben_am || '',
+            schluessel_zurueckgegeben_am: '',
+        };
+    }
+
+    function requestKeyStatusSave(payload) {
+        return fetch('api.php?action=save_licensee_key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Netzwerkfehler');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data || data.success === false) {
+                    const message = data && data.message ? data.message : 'Der Schlüsselstatus konnte nicht gespeichert werden.';
+                    throw new Error(message);
+                }
+
+                return data;
+            });
+    }
+
+    function createHistoryButton(licensee) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'secondary edit-key';
+        button.textContent = 'Historie';
+        button.addEventListener('click', () => {
+            openKeyModal(licensee);
+        });
+        return button;
+    }
+
+    function createInlineKeyToggle(licensee, options = {}) {
+        const variant = options.variant === 'compact' ? 'compact' : 'default';
+        const toggleId = `inline-key-toggle-${variant}-${licensee && licensee.id ? licensee.id : 'unknown'}`;
+        const label = document.createElement('label');
+        label.className = `key-status-inline${variant === 'compact' ? ' key-status-inline-compact' : ''}`;
+        label.setAttribute('for', toggleId);
+
+        const hiddenLabel = document.createElement('span');
+        hiddenLabel.className = 'sr-only';
+        hiddenLabel.textContent = `Schlüsselstatus für ${getDisplayName(licensee)} ändern`;
+        label.appendChild(hiddenLabel);
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = toggleId;
+        input.checked = getEffectiveInlineKeyState(licensee);
+        input.disabled = isInlineKeySavePending(licensee && licensee.id ? licensee.id : 0);
+        input.addEventListener('change', () => {
+            handleInlineKeyToggleChange(licensee && licensee.id ? licensee.id : 0, input.checked);
+        });
+        label.appendChild(input);
+
+        const control = document.createElement('span');
+        control.className = 'key-status-inline-control';
+        control.setAttribute('aria-hidden', 'true');
+        const thumb = document.createElement('span');
+        thumb.className = 'key-status-inline-thumb';
+        control.appendChild(thumb);
+        label.appendChild(control);
+
+        const copy = document.createElement('span');
+        copy.className = 'key-status-inline-copy';
+
+        const title = document.createElement('span');
+        title.className = 'key-status-inline-title';
+        title.textContent = variant === 'compact'
+            ? (getEffectiveInlineKeyState(licensee) ? 'Aktiv' : 'Inaktiv')
+            : 'Schlüssel ausgegeben';
+        copy.appendChild(title);
+
+        const hint = document.createElement('span');
+        hint.className = 'key-status-inline-hint';
+        hint.textContent = getEffectiveInlineKeyState(licensee)
+            ? `Ausgegeben am: ${licensee.schluessel_ausgegeben_am_formatted || '–'}`
+            : 'Der Schlüssel ist aktuell nicht ausgegeben.';
+        copy.appendChild(hint);
+
+        label.appendChild(copy);
+        return label;
     }
 
     function getLicenseYears(licensee) {
@@ -211,19 +347,20 @@
     }
 
     function createDetailItem(label, value) {
-        if (!value) {
-            return null;
-        }
-
         const wrapper = document.createElement('div');
         wrapper.className = 'licensee-detail';
+        const textValue = value ? String(value) : '–';
+        const isEmpty = textValue === '–';
+        if (isEmpty) {
+            wrapper.classList.add('is-empty');
+        }
 
         const dt = document.createElement('dt');
         dt.textContent = label;
         wrapper.appendChild(dt);
 
         const dd = document.createElement('dd');
-        dd.textContent = value;
+        dd.textContent = textValue;
         wrapper.appendChild(dd);
 
         return wrapper;
@@ -232,14 +369,17 @@
     function createKeySummary(licensee) {
         const wrapper = document.createElement('div');
         wrapper.className = 'licensee-key-summary';
+        const keyGivenState = getEffectiveInlineKeyState(licensee);
 
         const badge = document.createElement('span');
-        badge.className = `badge ${licensee && licensee.schluessel_ausgegeben ? 'badge-key-given' : 'badge-key-missing'}`;
-        badge.textContent = licensee && licensee.schluessel_ausgegeben ? 'Schlüssel ausgegeben' : 'Kein Schlüssel';
+        badge.className = `badge ${keyGivenState ? 'badge-key-given' : 'badge-key-missing'}`;
+        badge.textContent = keyGivenState ? 'Schlüssel ausgegeben' : 'Kein Schlüssel';
         wrapper.appendChild(badge);
 
         const dateText = document.createElement('span');
-        const formattedDate = licensee && licensee.schluessel_ausgegeben_am_formatted ? licensee.schluessel_ausgegeben_am_formatted : '–';
+        const formattedDate = keyGivenState && licensee && licensee.schluessel_ausgegeben_am_formatted
+            ? licensee.schluessel_ausgegeben_am_formatted
+            : '–';
         dateText.textContent = `Ausgegeben am: ${formattedDate}`;
         wrapper.appendChild(dateText);
 
@@ -264,20 +404,17 @@
         addressCell.textContent = getAddressText(licensee);
         row.appendChild(addressCell);
 
+        const statusCell = document.createElement('td');
+        statusCell.appendChild(createInlineKeyToggle(licensee, { variant: 'compact' }));
+        row.appendChild(statusCell);
+
         const dateCell = document.createElement('td');
         dateCell.textContent = licensee && licensee.schluessel_ausgegeben_am_formatted ? licensee.schluessel_ausgegeben_am_formatted : '–';
         row.appendChild(dateCell);
 
         const actionCell = document.createElement('td');
         actionCell.className = 'actions';
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.className = 'primary edit-key';
-        editButton.textContent = 'Schlüssel bearbeiten';
-        editButton.addEventListener('click', () => {
-            openKeyModal(licensee);
-        });
-        actionCell.appendChild(editButton);
+        actionCell.appendChild(createHistoryButton(licensee));
         row.appendChild(actionCell);
 
         return row;
@@ -300,7 +437,7 @@
             emptyRow.setAttribute('data-empty-row', 'true');
 
             const emptyCell = document.createElement('td');
-            emptyCell.colSpan = 5;
+            emptyCell.colSpan = 6;
             emptyCell.className = 'empty';
             emptyCell.textContent = 'Aktuell ist kein Schlüssel ausgegeben.';
             emptyRow.appendChild(emptyCell);
@@ -326,7 +463,7 @@
 
         results.forEach(result => {
             const card = document.createElement('article');
-            card.className = 'licensee-card';
+            card.className = 'licensee-card licensee-card-compact';
             card.dataset.licenseeId = result && result.id ? String(result.id) : '';
 
             const header = document.createElement('header');
@@ -351,16 +488,14 @@
             const detailsList = document.createElement('dl');
             detailsList.className = 'licensee-details';
 
+            const birthdateParts = [];
             if (result && result.geburtsdatum_formatted) {
-                const birthdateParts = [result.geburtsdatum_formatted];
-                if (typeof result.alter === 'number' && Number.isFinite(result.alter)) {
-                    birthdateParts.push(`${result.alter} Jahre`);
-                }
-                const birthdateDetail = createDetailItem('Geburtsdatum', birthdateParts.join(' · '));
-                if (birthdateDetail) {
-                    detailsList.appendChild(birthdateDetail);
-                }
+                birthdateParts.push(result.geburtsdatum_formatted);
             }
+            if (typeof (result && result.alter) === 'number' && Number.isFinite(result.alter)) {
+                birthdateParts.push(`${result.alter} Jahre`);
+            }
+            detailsList.appendChild(createDetailItem('Geburtsdatum', birthdateParts.join(' · ')));
 
             const addressParts = [];
             if (result && result.strasse) {
@@ -376,42 +511,19 @@
             if (cityParts.length > 0) {
                 addressParts.push(cityParts.join(' '));
             }
-            const addressDetail = createDetailItem('Adresse', addressParts.join(', '));
-            if (addressDetail) {
-                detailsList.appendChild(addressDetail);
-            }
-
-            const phoneDetail = createDetailItem('Telefon', result && result.telefon ? result.telefon : null);
-            if (phoneDetail) {
-                detailsList.appendChild(phoneDetail);
-            }
-
-            const emailDetail = createDetailItem('E-Mail', result && result.email ? result.email : null);
-            if (emailDetail) {
-                detailsList.appendChild(emailDetail);
-            }
+            detailsList.appendChild(createDetailItem('Adresse', addressParts.join(', ')));
+            detailsList.appendChild(createDetailItem('Telefon', result && result.telefon ? result.telefon : '–'));
+            detailsList.appendChild(createDetailItem('E-Mail', result && result.email ? result.email : '–'));
 
             const licenseYears = getLicenseYears(result);
-            const licenseYearsDetail = createDetailItem('Lizenzjahre', licenseYears.length > 0 ? licenseYears.join(', ') : '–');
-            if (licenseYearsDetail) {
-                detailsList.appendChild(licenseYearsDetail);
-            }
-
-            if (detailsList.children.length > 0) {
-                card.appendChild(detailsList);
-            }
+            detailsList.appendChild(createDetailItem('Lizenzjahre', licenseYears.length > 0 ? licenseYears.join(', ') : '–'));
+            card.appendChild(detailsList);
 
             const actions = document.createElement('div');
             actions.className = 'licensee-card-actions';
 
-            const editButton = document.createElement('button');
-            editButton.type = 'button';
-            editButton.className = 'primary';
-            editButton.textContent = 'Schlüssel bearbeiten';
-            editButton.addEventListener('click', () => {
-                openKeyModal(result);
-            });
-            actions.appendChild(editButton);
+            actions.appendChild(createInlineKeyToggle(result, { variant: 'compact' }));
+            actions.appendChild(createHistoryButton(result));
 
             card.appendChild(actions);
             searchResults.appendChild(card);
@@ -581,6 +693,24 @@
             });
     }
 
+    function refreshOpenKeyModal(updatedLicensee) {
+        const normalizedLicensee = buildNormalizedLicensee(updatedLicensee);
+        if (!normalizedLicensee || keyModal.hidden || currentLicenseeId !== normalizedLicensee.id) {
+            return;
+        }
+
+        currentLicensee = currentLicensee
+            ? { ...currentLicensee, ...normalizedLicensee }
+            : normalizedLicensee;
+        keyLicenseeId.value = String(normalizedLicensee.id);
+        keyLicenseeName.textContent = getDisplayName(currentLicensee);
+        keyGiven.checked = !!currentLicensee.schluessel_ausgegeben;
+        keyGivenDate.value = currentLicensee.schluessel_ausgegeben_am || '';
+        keyReturnedDate.value = '';
+        updateKeyFormState();
+        loadKeyHistory();
+    }
+
     function closeKeyModal() {
         if (keyHistoryController) {
             keyHistoryController.abort();
@@ -682,6 +812,41 @@
         return currentLicensee;
     }
 
+    function handleInlineKeyToggleChange(licenseeId, nextState) {
+        const normalizedLicenseeId = Number(licenseeId);
+        const licensee = findKnownLicensee(normalizedLicenseeId);
+        const payload = buildInlineKeySavePayload(licensee, nextState);
+
+        if (!normalizedLicenseeId || !payload) {
+            renderSearchResults(currentResults);
+            renderKeyOverviewTable();
+            return;
+        }
+
+        inlineSaveLicenseeIds.add(normalizedLicenseeId);
+        inlinePendingKeyStates.set(normalizedLicenseeId, !!nextState);
+        renderSearchResults(currentResults);
+        renderKeyOverviewTable();
+
+        requestKeyStatusSave(payload)
+            .then(data => {
+                const mergedLicensee = mergeUpdatedLicensee(data.licensee || null);
+                refreshOpenKeyModal(mergedLicensee);
+                updateSearchMessage(currentResults.length > 0
+                    ? `Schlüssel gespeichert. ${currentResults.length} Lizenznehmer gefunden.`
+                    : 'Schlüssel gespeichert.');
+            })
+            .catch(error => {
+                alert(error && error.message ? error.message : 'Der Schlüsselstatus konnte nicht gespeichert werden.');
+            })
+            .finally(() => {
+                inlineSaveLicenseeIds.delete(normalizedLicenseeId);
+                inlinePendingKeyStates.delete(normalizedLicenseeId);
+                renderSearchResults(currentResults);
+                renderKeyOverviewTable();
+            });
+    }
+
     function resetSearch(options = {}) {
         const { skipFormReset = false } = options;
 
@@ -735,24 +900,8 @@
             schluessel_zurueckgegeben_am: !keyGiven.checked && currentActiveHistory ? (keyReturnedDate.value || '') : '',
         };
 
-        fetch('api.php?action=save_licensee_key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Netzwerkfehler');
-                }
-                return response.json();
-            })
+        requestKeyStatusSave(payload)
             .then(data => {
-                if (!data || data.success === false) {
-                    const message = data && data.message ? data.message : 'Der Schlüsselstatus konnte nicht gespeichert werden.';
-                    alert(message);
-                    return;
-                }
-
                 mergeUpdatedLicensee(data.licensee || null);
                 renderSearchResults(currentResults);
                 updateSearchMessage(currentResults.length > 0
@@ -760,8 +909,8 @@
                     : 'Schlüssel gespeichert.');
                 closeKeyModal();
             })
-            .catch(() => {
-                alert('Der Schlüsselstatus konnte nicht gespeichert werden.');
+            .catch(error => {
+                alert(error && error.message ? error.message : 'Der Schlüsselstatus konnte nicht gespeichert werden.');
             })
             .finally(() => {
                 saveInFlight = false;

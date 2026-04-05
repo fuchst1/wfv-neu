@@ -49,6 +49,7 @@ $boats = get_boats_overview();
         <div class="table-actions-bar">
             <div class="table-actions">
                 <button type="button" class="primary" id="openAddBoat">Boot hinzufügen</button>
+                <a class="button-link inline" href="export.php?dataset=boats&format=xlsx">XLSX exportieren</a>
             </div>
         </div>
         <div class="table-search-row">

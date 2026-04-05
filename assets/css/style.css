@@ -571,7 +571,7 @@ details {
     margin-top: 2rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 0.9rem;
 }
 
 .licensee-card {
@@ -649,6 +649,10 @@ details {
     font-weight: 400;
 }
 
+.licensee-detail.is-empty dd {
+    color: var(--muted);
+}
+
 .licensee-history {
     margin-top: 1.75rem;
 }
@@ -691,8 +695,71 @@ details {
 .licensee-card-actions {
     margin-top: 1.25rem;
     display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.75rem;
+}
+
+.licensee-card-compact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.55rem 1.25rem;
+    padding: 1rem 1.15rem;
+}
+
+.licensee-card-compact header,
+.licensee-card-compact .licensee-key-summary,
+.licensee-card-compact .licensee-details {
+    grid-column: 1;
+}
+
+.licensee-card-compact header {
+    gap: 0.4rem 0.9rem;
+}
+
+.licensee-card-compact h4 {
+    font-size: 1.1rem;
+}
+
+.licensee-card-compact .licensee-card-meta {
+    font-size: 0.9rem;
+}
+
+.licensee-card-compact .licensee-key-summary {
+    margin-top: 0;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.licensee-card-compact .licensee-details {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem 1rem;
+    margin-top: 0.2rem;
+}
+
+.licensee-card-compact .licensee-detail {
+    gap: 0.15rem;
+}
+
+.licensee-card-compact .licensee-card-actions {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    margin-top: 0;
+    align-self: center;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-width: 9rem;
+}
+
+.licensee-card-compact .key-status-inline {
+    justify-content: flex-end;
+}
+
+.licensee-card-compact .key-status-inline-compact .key-status-inline-title {
+    font-size: 0.85rem;
 }
 
 .key-history-table {
@@ -799,6 +866,96 @@ details {
     opacity: 0.75;
 }
 
+.key-status-inline {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--text);
+}
+
+.key-status-inline input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.key-status-inline-control {
+    position: relative;
+    flex: 0 0 auto;
+    width: 2.9rem;
+    height: 1.7rem;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.key-status-inline-thumb {
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    transition: transform 0.2s ease;
+}
+
+.key-status-inline-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.key-status-inline-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.key-status-inline-hint {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.2;
+}
+
+.key-status-inline input[type="checkbox"]:checked + .key-status-inline-control {
+    background: var(--primary);
+}
+
+.key-status-inline input[type="checkbox"]:checked + .key-status-inline-control .key-status-inline-thumb {
+    transform: translateX(1.2rem);
+}
+
+.key-status-inline input[type="checkbox"]:focus-visible + .key-status-inline-control {
+    outline: 3px solid rgba(29, 111, 66, 0.2);
+    outline-offset: 3px;
+}
+
+.key-status-inline input[type="checkbox"]:disabled + .key-status-inline-control {
+    opacity: 0.7;
+}
+
+.key-status-inline input[type="checkbox"]:disabled ~ .key-status-inline-copy {
+    opacity: 0.75;
+}
+
+.key-status-inline-compact .key-status-inline-title {
+    font-size: 0.9rem;
+}
+
+.key-status-inline-compact .key-status-inline-hint {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .app-header {
         gap: 1rem;
@@ -824,7 +981,22 @@ details {
         width: 100%;
     }
 
+    .licensee-card-compact {
+        grid-template-columns: 1fr;
+    }
+
+    .licensee-card-compact .licensee-card-actions {
+        grid-column: 1;
+        grid-row: auto;
+        align-items: stretch;
+        min-width: 0;
+    }
+
     .key-status-toggle {
         align-items: flex-start;
+    }
+
+    .key-status-inline {
+        width: 100%;
     }
 }

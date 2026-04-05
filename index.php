@@ -67,7 +67,6 @@ $licenseeTotalExcludingKinder = count($licensees) - $kinderCount;
         <div class="table-actions-bar">
             <div class="table-actions">
                 <button class="primary" id="openAddLicense"<?= $isYearClosed ? ' disabled aria-disabled="true" title="Jahr abgeschlossen"' : '' ?>>Lizenz hinzufügen</button>
-                <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=csv">CSV exportieren</a>
                 <a class="button-link inline" href="export.php?jahr=<?= $currentYear ?>&format=xlsx">XLSX exportieren</a>
             </div>
         </div>
